@@ -14,7 +14,6 @@ import {
 const firebaseConfig = {
     apiKey: "AIzaSyCvE0TxxH9Gey9PZtGA_-VCpHpsUM7hr8E",
     authDomain: "merlo-494a7.firebaseapp.com",
-    databaseURL: "https://merlo-494a7-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "merlo-494a7",
     storageBucket: "merlo-494a7.firebasestorage.app",
     messagingSenderId: "1001648836568",
@@ -37,6 +36,10 @@ let messagesListenerRef = null;
 let serversListenerRef = null;
 let channelsListenerRef = null;
 let membersListenerRef = null;
+let typingListenerRef = null;
+let typingTimeoutHandle = null;
+let membersCache = [];           // [{ uid, username }] - mention otomatik tamamlama için
+let mentionQueryStart = -1;      // input içinde @'nin başladığı index, -1 = aktif değil
 
 // ================= DOM ELEMANLARI =================
 const loginPage = document.getElementById('loginPage');
@@ -140,6 +143,10 @@ function cleanupListeners() {
     if (channelsListenerRef) { off(channelsListenerRef); channelsListenerRef = null; }
     if (membersListenerRef) { off(membersListenerRef); membersListenerRef = null; }
     if (messagesListenerRef) { off(messagesListenerRef); messagesListenerRef = null; }
+    if (typingListenerRef) { off(typingListenerRef); typingListenerRef = null; }
+    if (currentServerId && currentChannelId && auth.currentUser) {
+        remove(typingRef()).catch(() => {});
+    }
     currentServerId = null;
     currentChannelId = null;
 }
@@ -296,6 +303,7 @@ function selectTextChannel(channelId, name) {
     activeChannelTitle.innerText = name;
     renderChannels(currentServerData.channels || {});
     listenMessages();
+    listenTyping();
 }
 
 function joinVoiceChannelPlaceholder(name) {
@@ -325,6 +333,7 @@ function listenMembers(serverId) {
     onValue(membersRef, async (snap) => {
         const members = snap.val() || {};
         memberList.innerHTML = '';
+        membersCache = [];
 
         for (const uid of Object.keys(members)) {
             const [profileSnap, statusSnap] = await Promise.all([
@@ -334,6 +343,8 @@ function listenMembers(serverId) {
             const profile = profileSnap.val() || { username: 'Bilinmeyen' };
             const status = statusSnap.val() || { state: 'offline' };
             const isOnline = status.state === 'online';
+
+            membersCache.push({ uid, username: profile.username || 'Bilinmeyen' });
 
             const div = document.createElement('div');
             div.className = 'flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-default';
@@ -372,7 +383,7 @@ function listenMessages() {
                 <span class="font-bold text-indigo-400 text-xs">${escapeHTML(msg.user)}</span>
                 <span class="text-[10px] text-gray-500">${escapeHTML(msg.time)}</span>
             </div>
-            <p class="text-gray-200 text-sm">${escapeHTML(msg.text)}</p>
+            <p class="text-gray-200 text-sm">${highlightMentions(msg.text)}</p>
         `;
         chatArea.appendChild(div);
         chatArea.scrollTop = chatArea.scrollHeight;
@@ -395,7 +406,163 @@ messageForm.addEventListener('submit', (e) => {
     });
 
     messageInput.value = '';
+    hideMentionDropdown();
+    setTypingState(false);
 });
+
+// ================= YAZIYOR... GÖSTERGESİ =================
+const typingIndicatorEl = document.getElementById('typingIndicator');
+
+function typingRef() {
+    return ref(db, `servers/${currentServerId}/channels/${currentChannelId}/typing/${auth.currentUser.uid}`);
+}
+
+function setTypingState(isTyping) {
+    if (!currentServerId || !currentChannelId || !auth.currentUser) return;
+    if (isTyping) {
+        set(typingRef(), { username: auth.currentUser.displayName || 'Anonim', ts: Date.now() });
+    } else {
+        remove(typingRef());
+    }
+}
+
+// Kullanıcı yazarken tetiklenir, 2.5sn boyunca durursa otomatik "yazıyor" durumunu kapatır
+function handleTypingActivity() {
+    setTypingState(true);
+    clearTimeout(typingTimeoutHandle);
+    typingTimeoutHandle = setTimeout(() => setTypingState(false), 2500);
+}
+
+function listenTyping() {
+    if (typingListenerRef) off(typingListenerRef);
+    typingIndicatorEl.innerText = '';
+    if (!currentServerId || !currentChannelId) return;
+
+    const tRef = ref(db, `servers/${currentServerId}/channels/${currentChannelId}/typing`);
+    typingListenerRef = tRef;
+
+    onValue(tRef, (snap) => {
+        const typingData = snap.val() || {};
+        const myUid = auth.currentUser?.uid;
+        const now = Date.now();
+        // Kendisi hariç, son 4 saniye içinde yazan kullanıcılar
+        const names = Object.entries(typingData)
+            .filter(([uid, data]) => uid !== myUid && data.ts && (now - data.ts) < 4000)
+            .map(([, data]) => data.username);
+
+        if (names.length === 0) {
+            typingIndicatorEl.innerText = '';
+        } else if (names.length === 1) {
+            typingIndicatorEl.innerText = `${names[0]} yazıyor...`;
+        } else if (names.length <= 3) {
+            typingIndicatorEl.innerText = `${names.join(', ')} yazıyor...`;
+        } else {
+            typingIndicatorEl.innerText = `${names.length} kişi yazıyor...`;
+        }
+    });
+}
+
+// ================= @MENTION OTOMATİK TAMAMLAMA =================
+const mentionDropdown = document.getElementById('mentionDropdown');
+
+function getMentionQuery(text, cursorPos) {
+    // İmlecin hemen solundaki @token'ı bul (boşluğa kadar geriye git)
+    const upToCursor = text.slice(0, cursorPos);
+    const match = upToCursor.match(/@([a-zA-Z0-9ığüşöçİĞÜŞÖÇ_]*)$/);
+    if (!match) return null;
+    return { query: match[1].toLowerCase(), start: cursorPos - match[0].length };
+}
+
+function showMentionDropdown(matches) {
+    if (matches.length === 0) { hideMentionDropdown(); return; }
+    mentionDropdown.innerHTML = matches.map((m, i) => `
+        <div class="mention-item${i === 0 ? ' active' : ''}" data-username="${escapeHTML(m.username)}">
+            <div class="w-5 h-5 bg-indigo-600 rounded-full flex items-center justify-center text-[10px] font-bold text-white">${escapeHTML(m.username.charAt(0).toUpperCase())}</div>
+            ${escapeHTML(m.username)}
+        </div>
+    `).join('');
+    mentionDropdown.classList.remove('hidden');
+
+    mentionDropdown.querySelectorAll('.mention-item').forEach(item => {
+        item.addEventListener('click', () => insertMention(item.dataset.username));
+    });
+}
+
+function hideMentionDropdown() {
+    mentionDropdown.classList.add('hidden');
+    mentionDropdown.innerHTML = '';
+    mentionQueryStart = -1;
+}
+
+function insertMention(username) {
+    const text = messageInput.value;
+    const cursorPos = messageInput.selectionStart;
+    const q = getMentionQuery(text, cursorPos);
+    if (!q) return;
+
+    const before = text.slice(0, q.start);
+    const after = text.slice(cursorPos);
+    const newText = `${before}@${username} ${after}`;
+    messageInput.value = newText;
+
+    const newCursorPos = before.length + username.length + 2;
+    messageInput.setSelectionRange(newCursorPos, newCursorPos);
+    hideMentionDropdown();
+    messageInput.focus();
+}
+
+messageInput.addEventListener('input', () => {
+    handleTypingActivity();
+
+    const cursorPos = messageInput.selectionStart;
+    const q = getMentionQuery(messageInput.value, cursorPos);
+    if (!q) { hideMentionDropdown(); return; }
+
+    mentionQueryStart = q.start;
+    const matches = membersCache.filter(m => m.username.toLowerCase().startsWith(q.query)).slice(0, 6);
+    showMentionDropdown(matches);
+});
+
+messageInput.addEventListener('keydown', (e) => {
+    if (mentionDropdown.classList.contains('hidden')) return;
+    const items = mentionDropdown.querySelectorAll('.mention-item');
+    if (items.length === 0) return;
+
+    let activeIndex = Array.from(items).findIndex(i => i.classList.contains('active'));
+
+    if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        items[activeIndex]?.classList.remove('active');
+        activeIndex = (activeIndex + 1) % items.length;
+        items[activeIndex].classList.add('active');
+    } else if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        items[activeIndex]?.classList.remove('active');
+        activeIndex = (activeIndex - 1 + items.length) % items.length;
+        items[activeIndex].classList.add('active');
+    } else if (e.key === 'Enter' || e.key === 'Tab') {
+        e.preventDefault();
+        const active = mentionDropdown.querySelector('.mention-item.active') || items[0];
+        insertMention(active.dataset.username);
+    } else if (e.key === 'Escape') {
+        hideMentionDropdown();
+    }
+});
+
+// Mesajda geçen @kullanıcıadı ifadelerini (bilinen üyelerle eşleşenleri) vurgular
+function highlightMentions(text) {
+    const escaped = escapeHTML(text);
+    if (membersCache.length === 0) return escaped;
+
+    const usernamePattern = membersCache
+        .map(m => m.username.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+        .sort((a, b) => b.length - a.length) // uzun isimler önce eşleşsin
+        .join('|');
+    if (!usernamePattern) return escaped;
+
+    const regex = new RegExp(`@(${usernamePattern})\\b`, 'gi');
+    return escaped.replace(regex, '<span class="mention">@$1</span>');
+}
 
 // ================= MODAL: SUNUCU OLUŞTUR / KATIL =================
 const serverModal = document.getElementById('serverModal');
