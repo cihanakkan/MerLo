@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ciAI - İletişim Platformu</title>
+    <!-- Tasarım ve İkon Kütüphaneleri -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Stil Dosyamız -->
+    <link rel="stylesheet" href="style.css">
+</head>
+<body class="bg-[#2f3136] text-gray-200 font-sans flex h-screen overflow-hidden select-none">
+
+    <!-- GİRİŞ EKRANI (MODAL) -->
+    <div id="authModal" class="fixed inset-0 bg-[#18191c] z-50 flex items-center justify-center p-4">
+        <div class="bg-[#2f3136] w-full max-w-[480px] rounded-md p-8 shadow-2xl flex flex-col">
+            <h2 class="text-2xl font-bold text-white text-center mb-1">ciAI'a Hoş Geldin</h2>
+            <p class="text-sm text-gray-400 text-center mb-6">Bir kullanıcı adı yazıp direkt giriş yap kanka!</p>
+            
+            <form id="loginForm" class="flex flex-col gap-4">
+                <div>
+                    <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Kullanıcı Adı</label>
+                    <input id="loginUsername" type="text" required placeholder="Örn: Cihan34" class="w-full bg-[#202225] text-white p-2.5 rounded outline-none border border-transparent focus:border-indigo-500 transition-colors">
+                </div>
+                <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-medium py-2.5 rounded transition-colors mt-2 shadow-md">Sohbete Başla</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- SUNUCU BARI -->
+    <div class="w-18 bg-[#202225] flex flex-col items-center py-3 gap-2 z-10 shrink-0">
+        <div class="w-12 h-12 bg-indigo-600 rounded-3xl flex items-center justify-center hover:rounded-2xl transition-all duration-200 cursor-pointer group relative shadow-lg" id="btnServerCentric">
+            <span class="text-white font-black text-xl">CI</span>
+            <span class="sidebar-tooltip">ciAI Merkez</span>
+        </div>
+        <div class="w-8 h-[2px] bg-[#36393f] rounded my-1"></div>
+        <div class="w-12 h-12 bg-[#36393f] rounded-3xl flex items-center justify-center hover:bg-emerald-600 hover:rounded-2xl transition-all duration-200 cursor-pointer group relative" id="btnServerDev">
+            <i class="fa-solid fa-code text-white text-lg"></i>
+            <span class="sidebar-tooltip">Yazılımcılar</span>
+        </div>
+        <div class="w-12 h-12 bg-[#36393f] rounded-3xl flex items-center justify-center hover:bg-red-600 hover:rounded-2xl transition-all duration-200 cursor-pointer group relative" id="btnServerSquad">
+            <i class="fa-solid fa-gamepad text-white text-lg"></i>
+            <span class="sidebar-tooltip">Bizim Tayfa</span>
+        </div>
+    </div>
+
+    <!-- KANAL LİSTESİ -->
+    <div class="w-60 bg-[#2f3136] flex flex-col justify-between shrink-0 border-r border-[#202225]">
+        <div>
+            <div class="h-12 border-b border-[#202225] flex items-center justify-between px-4 shadow-sm bg-[#2f3136]">
+                <h1 id="serverName" class="font-bold text-white tracking-wide truncate">ciAI Merkez</h1>
+                <i class="fa-solid fa-chevron-down text-gray-400 text-xs"></i>
+            </div>
+            <div class="p-2 flex flex-col gap-0.5" id="channelsContainer"></div>
+        </div>
+
+        <!-- Profil Alt Bar -->
+        <div class="h-14 bg-[#292b2f] flex items-center justify-between px-2">
+            <div id="logoutBtn" class="flex items-center gap-2 cursor-pointer p-1 rounded hover:bg-[#34373c] transition-colors overflow-hidden">
+                <div class="relative shrink-0">
+                    <div id="userAvatar" class="w-8 h-8 bg-gradient-to-tr from-amber-500 to-rose-500 rounded-full flex items-center justify-center font-bold text-sm text-white">?</div>
+                    <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-emerald-500 border-2 border-[#292b2f] rounded-full"></div>
+                </div>
+                <div class="flex flex-col leading-tight overflow-hidden">
+                    <span id="currentUserTitle" class="text-sm font-semibold text-white truncate">Giriş Yapılmadı</span>
+                    <span class="text-xs text-gray-400">Çıkış yapmak için tıkla</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- CHAT ALANI -->
+    <div class="flex-1 bg-[#36393f] flex flex-col justify-between h-full relative">
+        <div class="h-12 border-b border-[#202225] flex items-center px-4 shadow-sm bg-[#36393f] z-10">
+            <i class="fa-solid fa-hashtag text-gray-400 text-md mr-2"></i>
+            <span id="activeChannelTitle" class="font-bold text-white text-md">genel</span>
+            <div class="w-[1px] h-4 bg-[#4f545c] mx-4"></div>
+            <span id="channelDescription" class="text-xs text-gray-400 truncate">Platforma hoş geldin kral!</span>
+        </div>
+
+        <div id="chatArea" class="flex-1 p-4 overflow-y-auto flex flex-col gap-4"></div>
+
+        <div class="px-4 pb-6 bg-[#36393f]">
+            <form id="messageForm" class="bg-[#40444b] rounded-lg flex items-center px-4 py-2.5 shadow-inner">
+                <input id="messageInput" type="text" autocomplete="off" placeholder="Mesaj gönder..." class="bg-transparent flex-1 text-sm text-gray-200 outline-none placeholder-gray-500">
+            </form>
+        </div>
+    </div>
+
+    <!-- Firebase kullandığımız için type="module" olmak zorunda -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
