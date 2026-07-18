@@ -23,3 +23,45 @@ body::before {
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #1e1f22; }
 ::-webkit-scrollbar-thumb { background: #2b2d31; border-radius: 3px; }
+
+/* Yazıyor... göstergesi */
+#typingIndicator {
+    min-height: 18px;
+}
+
+/* @mention vurgusu */
+.mention {
+    background: rgba(88, 101, 242, 0.25);
+    color: #c9cdfb;
+    padding: 0 4px;
+    border-radius: 4px;
+    font-weight: 600;
+}
+
+/* Mention otomatik tamamlama kutusu */
+#mentionDropdown {
+    position: absolute;
+    bottom: 100%;
+    left: 0;
+    right: 0;
+    margin-bottom: 8px;
+    background: #232428;
+    border: 1px solid #3f4147;
+    border-radius: 8px;
+    max-height: 180px;
+    overflow-y: auto;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+}
+#mentionDropdown .mention-item {
+    padding: 8px 12px;
+    font-size: 13px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+#mentionDropdown .mention-item:hover,
+#mentionDropdown .mention-item.active {
+    background: #5865f2;
+    color: white;
+}
