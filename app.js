@@ -14,6 +14,7 @@ import {
 const firebaseConfig = {
     apiKey: "AIzaSyCvE0TxxH9Gey9PZtGA_-VCpHpsUM7hr8E",
     authDomain: "merlo-494a7.firebaseapp.com",
+    databaseURL: "https://merlo-494a7-default-rtdb.europe-west1.firebasedatabase.app",
     projectId: "merlo-494a7",
     storageBucket: "merlo-494a7.firebasestorage.app",
     messagingSenderId: "1001648836568",
