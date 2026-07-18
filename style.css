@@ -3,7 +3,6 @@ body {
     background-image: linear-gradient(135deg, #18191c 0%, #202225 40%, #4752c4 100%);
     position: relative;
 }
-
 /* Discord arka plan parçacık havası katmak için sahte katman */
 body::before {
     content: "";
@@ -14,16 +13,13 @@ body::before {
     pointer-events: none;
     z-index: 1;
 }
-
 .animate-fade-in {
     animation: fadeIn 0.2s ease-out forwards;
 }
-
 @keyframes fadeIn {
     from { opacity: 0; transform: scale(0.96); }
     to { opacity: 1; transform: scale(1); }
 }
-
 ::-webkit-scrollbar { width: 6px; }
 ::-webkit-scrollbar-track { background: #1e1f22; }
 ::-webkit-scrollbar-thumb { background: #2b2d31; border-radius: 3px; }
