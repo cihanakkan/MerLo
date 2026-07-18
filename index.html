@@ -6,6 +6,7 @@
     <title>MerLo - Canlı İletişim</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body class="bg-[#1e1f22] text-gray-200 font-sans h-screen overflow-hidden select-none flex items-center justify-center">
 
@@ -65,29 +66,40 @@
 
     <!-- MAIN APP PANELİ (/) -->
     <div id="mainAppPage" class="hidden fixed inset-0 flex bg-[#313338] z-[100]">
+
         <!-- Sunucu Çubuğu -->
-        <div class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0">
-            <div class="w-12 h-12 bg-[#5865f2] rounded-3xl flex items-center justify-center text-white font-black text-xl hover:rounded-2xl transition-all cursor-pointer" id="btnServerCentric">
-                <span>ML</span>
-            </div>
-            <div class="w-8 h-[2px] bg-[#35363c] rounded my-1"></div>
-            <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-white hover:bg-emerald-600 hover:rounded-2xl transition-all cursor-pointer" id="btnServerDev">
-                <i class="fa-solid fa-code text-lg"></i>
-            </div>
-            <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-red-500 hover:bg-red-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer" id="btnServerPendik">
-                <i class="fa-solid fa-dove text-lg"></i>
-            </div>
+        <div class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0 overflow-y-auto">
+            <div id="serverIconList" class="flex flex-col items-center gap-2"></div>
+            <div class="w-8 h-[2px] bg-[#35363c] rounded my-1 shrink-0"></div>
+            <button id="btnAddServer" title="Sunucu oluştur / katıl" class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-emerald-500 hover:bg-emerald-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer shrink-0">
+                <i class="fa-solid fa-plus text-lg"></i>
+            </button>
         </div>
 
         <!-- Kanallar Sol Bar -->
         <div class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0">
-            <div>
-                <div class="h-12 border-b border-[#1f2023] flex items-center px-4">
-                    <h1 id="serverName" class="font-bold text-white truncate">MerLo Merkez</h1>
+            <div class="flex-1 overflow-y-auto">
+                <div class="h-12 border-b border-[#1f2023] flex items-center justify-between px-4 shrink-0">
+                    <h1 id="serverName" class="font-bold text-white truncate">Bir sunucu seç</h1>
+                    <button id="btnServerInfo" title="Davet kodunu göster" class="text-gray-400 hover:text-white shrink-0">
+                        <i class="fa-solid fa-circle-info"></i>
+                    </button>
                 </div>
-                <div class="p-2 flex flex-col gap-0.5" id="channelsContainer"></div>
+                <div class="p-2">
+                    <div class="flex items-center justify-between px-1 mt-2 mb-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Yazı Kanalları</span>
+                        <button id="btnAddTextChannel" title="Kanal ekle" class="text-gray-400 hover:text-white text-xs"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div class="flex flex-col gap-0.5" id="textChannelsContainer"></div>
+
+                    <div class="flex items-center justify-between px-1 mt-4 mb-1">
+                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Sesli Kanallar</span>
+                        <button id="btnAddVoiceChannel" title="Kanal ekle" class="text-gray-400 hover:text-white text-xs"><i class="fa-solid fa-plus"></i></button>
+                    </div>
+                    <div class="flex flex-col gap-0.5" id="voiceChannelsContainer"></div>
+                </div>
             </div>
-            <div class="h-14 bg-[#232428] flex items-center justify-between px-2">
+            <div class="h-14 bg-[#232428] flex items-center justify-between px-2 shrink-0">
                 <div class="flex items-center gap-2 overflow-hidden">
                     <div id="userAvatar" class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0">?</div>
                     <span id="currentUserTitle" class="text-sm font-semibold text-white truncate">Yükleniyor...</span>
@@ -97,17 +109,70 @@
         </div>
 
         <!-- Chat Penceresi -->
-        <div class="flex-1 flex flex-col bg-[#313338]">
-            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 gap-2">
+        <div class="flex-1 flex flex-col bg-[#313338] min-w-0">
+            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 gap-2 shrink-0">
                 <i class="fa-solid fa-hashtag text-gray-400"></i>
-                <span id="activeChannelTitle" class="font-bold text-white">genel</span>
+                <span id="activeChannelTitle" class="font-bold text-white">kanal seç</span>
             </div>
             <div id="chatArea" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 text-sm"></div>
-            <div class="p-4 bg-[#313338]">
+            <div class="p-4 bg-[#313338] shrink-0">
                 <form id="messageForm" class="bg-[#383a40] rounded-lg px-4 py-2.5 shadow-inner">
                     <input id="messageInput" type="text" autocomplete="off" placeholder="Mesajı buraya salla..." class="bg-transparent w-full text-sm text-gray-200 outline-none">
                 </form>
             </div>
+        </div>
+
+        <!-- Aktif Üyeler Barı -->
+        <div class="w-60 bg-[#2b2d31] shrink-0 overflow-y-auto hidden md:block">
+            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shrink-0">
+                <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Üyeler</span>
+            </div>
+            <div id="memberList" class="p-2 flex flex-col gap-1"></div>
+        </div>
+    </div>
+
+    <!-- MODAL: Sunucu Oluştur / Katıl -->
+    <div id="serverModal" class="hidden fixed inset-0 bg-black/70 z-[200] items-center justify-center">
+        <div class="bg-[#313338] w-full max-w-sm rounded-md p-6 relative">
+            <button id="closeServerModal" class="absolute top-3 right-3 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="text-xl font-bold text-white text-center mb-4">Bir Sunucu Ekle</h2>
+
+            <div class="mb-5">
+                <label class="text-xs font-bold text-[#b5bac1] uppercase tracking-wide block mb-2">Yeni sunucu oluştur</label>
+                <div class="flex gap-2">
+                    <input id="newServerName" type="text" placeholder="Sunucu adı" class="flex-1 bg-[#1e1f22] text-white p-2.5 rounded outline-none border border-transparent focus:border-[#5865f2]">
+                    <button id="btnCreateServer" class="bg-[#5865f2] hover:bg-[#4752c4] text-white text-sm font-medium px-3 rounded">Oluştur</button>
+                </div>
+            </div>
+
+            <div class="border-t border-[#3f4147] pt-4">
+                <label class="text-xs font-bold text-[#b5bac1] uppercase tracking-wide block mb-2">Davet koduyla katıl</label>
+                <div class="flex gap-2">
+                    <input id="joinServerCode" type="text" placeholder="Davet kodu" class="flex-1 bg-[#1e1f22] text-white p-2.5 rounded outline-none border border-transparent focus:border-[#5865f2]">
+                    <button id="btnJoinServer" class="bg-[#2b2d31] hover:bg-[#3a3c42] text-white text-sm font-medium px-3 rounded">Katıl</button>
+                </div>
+            </div>
+            <p id="serverModalError" class="text-red-400 text-xs mt-3 hidden"></p>
+        </div>
+    </div>
+
+    <!-- MODAL: Kanal Oluştur -->
+    <div id="channelModal" class="hidden fixed inset-0 bg-black/70 z-[200] items-center justify-center">
+        <div class="bg-[#313338] w-full max-w-sm rounded-md p-6 relative">
+            <button id="closeChannelModal" class="absolute top-3 right-3 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <h2 id="channelModalTitle" class="text-xl font-bold text-white text-center mb-4">Kanal Oluştur</h2>
+            <input id="newChannelName" type="text" placeholder="kanal-adı" class="w-full bg-[#1e1f22] text-white p-2.5 rounded outline-none border border-transparent focus:border-[#5865f2] mb-4">
+            <button id="btnCreateChannel" class="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium py-2.5 rounded">Oluştur</button>
+        </div>
+    </div>
+
+    <!-- MODAL: Davet Kodu Göster -->
+    <div id="inviteModal" class="hidden fixed inset-0 bg-black/70 z-[200] items-center justify-center">
+        <div class="bg-[#313338] w-full max-w-sm rounded-md p-6 relative text-center">
+            <button id="closeInviteModal" class="absolute top-3 right-3 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="text-xl font-bold text-white mb-2">Arkadaşlarını davet et</h2>
+            <p class="text-sm text-[#b5bac1] mb-4">Bu kodu paylaş, herkes bu sunucuya katılsın</p>
+            <div id="inviteCodeDisplay" class="bg-[#1e1f22] text-[#00a8fc] font-mono text-lg py-3 rounded select-text"></div>
         </div>
     </div>
 
