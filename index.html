@@ -64,62 +64,54 @@
         </form>
     </div>
 
-    <!-- ================= ANA UYGULAMA PANELİ ================= -->
+  <!-- ================= ANA UYGULAMA PANELİ ================= -->
     <div id="appContainer" class="hidden fixed inset-0 flex bg-[#313338] z-[100]">
-        <!-- Sunucu Barı -->
-        <div class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0">
-            <div class="w-12 h-12 bg-[#5865f2] rounded-3xl flex items-center justify-center text-white font-black text-xl hover:rounded-2xl transition-all cursor-pointer group relative" id="btnServerCentric">
+        <!-- Sunucu Barı (Tasarım Düzeltildi) -->
+        <div class="w-[72px] bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0">
+            <div class="w-12 h-12 bg-[#5865f2] rounded-3xl flex items-center justify-center text-white font-black text-lg hover:rounded-2xl transition-all cursor-pointer group relative" id="btnServerCentric">
                 <span>ML</span>
                 <span class="sidebar-tooltip">MerLo Merkez</span>
             </div>
-            <div class="w-8 h-[2px] bg-[#35363c] rounded my-1"></div>
+            <div class="w-8 h-[2px] bg-[#35363c] rounded my-1 shrink-0"></div>
             <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-white hover:bg-emerald-600 hover:rounded-2xl transition-all cursor-pointer group relative" id="btnServerDev">
                 <i class="fa-solid fa-code text-lg"></i>
                 <span class="sidebar-tooltip">Yazılımcılar</span>
             </div>
-            <!-- YENİ SUNUCU: PENDİKSPOR -->
             <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-red-500 hover:bg-red-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer group relative" id="btnServerPendik">
-                <i class="fa-solid fa-dove text-lg"></i> <!-- Martı simgesi -->
+                <i class="fa-solid fa-dove text-lg"></i>
                 <span class="sidebar-tooltip">Pendikspor</span>
             </div>
         </div>
 
-        <!-- Kanal Listesi Sol Bar -->
-        <div class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0">
-            <div>
-                <div class="h-12 border-b border-[#1f2023] flex items-center px-4">
-                    <h1 id="serverName" class="font-bold text-white truncate">MerLo Merkez</h1>
+        <!-- Kanal Listesi Sol Bar (Tasarım Düzeltildi) -->
+        <div class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0 h-full border-r border-[#1e1f22]">
+            <div class="flex flex-col">
+                <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shadow-sm">
+                    <h1 id="serverName" class="font-bold text-white text-sm tracking-wide truncate">MerLo Merkez</h1>
                 </div>
-                <div class="p-2 flex flex-col gap-0.5" id="channelsContainer"></div>
+                <div class="p-2 flex flex-col gap-0.5 overflow-y-auto" id="channelsContainer"></div>
             </div>
             <!-- Profil Alanı -->
-            <div class="h-14 bg-[#232428] flex items-center justify-between px-2">
-                <div class="flex items-center gap-2 overflow-hidden">
-                    <div id="userAvatar" class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-sm text-white">?</div>
+            <div class="h-14 bg-[#232428] flex items-center justify-between px-2 shrink-0">
+                <div class="flex items-center gap-2 overflow-hidden w-[70%]">
+                    <div id="userAvatar" class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0">?</div>
                     <span id="currentUserTitle" class="text-sm font-semibold text-white truncate">Yükleniyor...</span>
                 </div>
-                <button id="logoutBtn" class="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-white">Çıkış</button>
+                <button id="logoutBtn" class="text-xs bg-red-600 hover:bg-red-700 px-2 py-1.5 rounded text-white shrink-0">Çıkış</button>
             </div>
         </div>
 
         <!-- Chat Alanı -->
-        <div class="flex-1 flex flex-col bg-[#313338]">
-            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 gap-2">
+        <div class="flex-1 flex flex-col bg-[#313338] h-full">
+            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 gap-2 shrink-0 shadow-sm">
                 <i class="fa-solid fa-hashtag text-gray-400"></i>
-                <span id="activeChannelTitle" class="font-bold text-white">genel</span>
+                <span id="activeChannelTitle" class="font-bold text-white text-sm">genel</span>
             </div>
-            <!-- Yazıların Düştüğü Alan -->
             <div id="chatArea" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 text-sm"></div>
-            <!-- Form -->
-            <div class="p-4 bg-[#313338]">
+            <div class="p-4 bg-[#313338] shrink-0">
                 <form id="messageForm" class="bg-[#383a40] rounded-lg px-4 py-2.5 shadow-inner">
                     <input id="messageInput" type="text" autocomplete="off" placeholder="Mesajı buraya salla..." class="bg-transparent w-full text-sm text-gray-200 outline-none">
                 </form>
             </div>
         </div>
     </div>
-
-    <!-- SDK Sürümlerini Kararlılık Açısından 10.8.0'a Sabitledik -->
-    <script type="module" src="app.js"></script>
-</body>
-</html>
