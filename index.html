@@ -115,9 +115,11 @@
                 <span id="activeChannelTitle" class="font-bold text-white">kanal seç</span>
             </div>
             <div id="chatArea" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 text-sm"></div>
-            <div class="p-4 bg-[#313338] shrink-0">
+            <div id="typingIndicator" class="px-4 text-xs text-gray-400 italic h-[18px]"></div>
+            <div class="p-4 pt-1 bg-[#313338] shrink-0 relative">
+                <div id="mentionDropdown" class="hidden"></div>
                 <form id="messageForm" class="bg-[#383a40] rounded-lg px-4 py-2.5 shadow-inner">
-                    <input id="messageInput" type="text" autocomplete="off" placeholder="Mesajı buraya salla..." class="bg-transparent w-full text-sm text-gray-200 outline-none">
+                    <input id="messageInput" type="text" autocomplete="off" placeholder="Mesajı buraya salla... (@ ile birini etiketle)" class="bg-transparent w-full text-sm text-gray-200 outline-none">
                 </form>
             </div>
         </div>
