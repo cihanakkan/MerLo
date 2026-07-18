@@ -9,8 +9,8 @@
 </head>
 <body class="bg-[#1e1f22] text-gray-200 font-sans h-screen overflow-hidden select-none flex items-center justify-center">
 
-    <!-- GİRİŞ EKRANI (MODAL KART) -->
-    <div id="loginCard" class="bg-[#313338] w-full max-w-[780px] rounded-md p-8 shadow-2xl flex relative animate-fade-in z-50">
+    <!-- GİRİŞ SAYFASI PANELİ -->
+    <div id="loginPage" class="hidden bg-[#313338] w-full max-w-[780px] rounded-md p-8 shadow-2xl flex relative z-50">
         <div class="absolute top-8 left-8 flex items-center gap-2 text-indigo-400 font-black text-2xl tracking-wider">
             <i class="fa-solid fa-comments text-2xl text-indigo-500"></i> MerLo
         </div>
@@ -27,7 +27,7 @@
                     <input id="loginPassword" type="password" required class="w-full bg-[#1e1f22] text-white p-2.5 rounded outline-none border border-transparent focus:border-[#5865f2]">
                 </div>
                 <button type="submit" class="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium py-3 rounded mt-2">Giriş Yap</button>
-                <p class="text-xs text-[#949ba4] mt-1">Bir hesaba mı ihtiyacın var? <button type="button" id="toRegisterBtn" class="text-[#00a8fc] hover:underline bg-transparent font-medium">Kaydol</button></p>
+                <p class="text-xs text-[#949ba4] mt-1">Bir hesaba mı ihtiyacın var? <button type="button" id="btnGoToRegister" class="text-[#00a8fc] hover:underline bg-transparent font-medium">Kaydol</button></p>
             </form>
         </div>
         <div class="hidden md:flex w-[40%] flex-col items-center justify-center border-l border-[#3f4147] pl-8 mt-8">
@@ -42,8 +42,8 @@
         </div>
     </div>
 
-    <!-- KAYIT OLMA EKRANI -->
-    <div id="registerCard" class="bg-[#313338] w-full max-w-[480px] rounded-md p-8 shadow-2xl hidden flex-col relative animate-fade-in z-50">
+    <!-- KAYIT SAYFASI PANELİ -->
+    <div id="registerPage" class="hidden bg-[#313338] w-full max-w-[480px] rounded-md p-8 shadow-2xl flex-col relative z-50">
         <h2 class="text-2xl font-bold text-white text-center mb-6">Bir hesap oluştur</h2>
         <form id="registerForm" class="flex flex-col gap-4 w-full">
             <div>
@@ -59,28 +59,27 @@
                 <input id="regPassword" type="password" required minlength="6" class="w-full bg-[#1e1f22] text-white p-2.5 rounded outline-none border border-transparent focus:border-[#5865f2]">
             </div>
             <button type="submit" class="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium py-3 rounded mt-2">Hesap Oluştur</button>
-            <p class="text-xs text-[#949ba4] mt-2">Zaten bir hesabın var mı? <button type="button" id="toLoginBtn" class="text-[#00a8fc] hover:underline bg-transparent font-medium">Giriş yap</button></p>
+            <p class="text-xs text-[#949ba4] mt-2">Zaten bir hesabın var mı? <button type="button" id="btnGoToLogin" class="text-[#00a8fc] hover:underline bg-transparent font-medium">Giriş yap</button></p>
         </form>
     </div>
 
-    <!-- ================= ANA UYGULAMA PANELİ ================= -->
-    <div id="appContainer" class="hidden fixed inset-0 flex bg-[#313338] z-[100]">
-        <!-- Sunucu Barı -->
+    <!-- MAIN APP PANELİ (/) -->
+    <div id="mainAppPage" class="hidden fixed inset-0 flex bg-[#313338] z-[100]">
+        <!-- Sunucu Çubuğu -->
         <div class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0">
-            <div class="w-12 h-12 bg-[#5865f2] rounded-3xl flex items-center justify-center text-white font-black text-xl hover:rounded-2xl transition-all cursor-pointer group relative" id="btnServerCentric">
+            <div class="w-12 h-12 bg-[#5865f2] rounded-3xl flex items-center justify-center text-white font-black text-xl hover:rounded-2xl transition-all cursor-pointer" id="btnServerCentric">
                 <span>ML</span>
             </div>
             <div class="w-8 h-[2px] bg-[#35363c] rounded my-1"></div>
-            <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-white hover:bg-emerald-600 hover:rounded-2xl transition-all cursor-pointer group relative" id="btnServerDev">
+            <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-white hover:bg-emerald-600 hover:rounded-2xl transition-all cursor-pointer" id="btnServerDev">
                 <i class="fa-solid fa-code text-lg"></i>
             </div>
-            <!-- PENDİKSPOR SUNUCUSU -->
-            <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-red-500 hover:bg-red-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer group relative" id="btnServerPendik">
+            <div class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-red-500 hover:bg-red-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer" id="btnServerPendik">
                 <i class="fa-solid fa-dove text-lg"></i>
             </div>
         </div>
 
-        <!-- Kanal Listesi Sol Bar -->
+        <!-- Kanallar Sol Bar -->
         <div class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0">
             <div>
                 <div class="h-12 border-b border-[#1f2023] flex items-center px-4">
@@ -88,7 +87,6 @@
                 </div>
                 <div class="p-2 flex flex-col gap-0.5" id="channelsContainer"></div>
             </div>
-            <!-- Profil Alanı -->
             <div class="h-14 bg-[#232428] flex items-center justify-between px-2">
                 <div class="flex items-center gap-2 overflow-hidden">
                     <div id="userAvatar" class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0">?</div>
@@ -98,15 +96,13 @@
             </div>
         </div>
 
-        <!-- Chat Alanı -->
+        <!-- Chat Penceresi -->
         <div class="flex-1 flex flex-col bg-[#313338]">
             <div class="h-12 border-b border-[#1f2023] flex items-center px-4 gap-2">
                 <i class="fa-solid fa-hashtag text-gray-400"></i>
                 <span id="activeChannelTitle" class="font-bold text-white">genel</span>
             </div>
-            <!-- Mesaj Listesi -->
             <div id="chatArea" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 text-sm"></div>
-            <!-- Mesaj Input Form -->
             <div class="p-4 bg-[#313338]">
                 <form id="messageForm" class="bg-[#383a40] rounded-lg px-4 py-2.5 shadow-inner">
                     <input id="messageInput" type="text" autocomplete="off" placeholder="Mesajı buraya salla..." class="bg-transparent w-full text-sm text-gray-200 outline-none">
