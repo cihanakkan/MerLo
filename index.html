@@ -12,9 +12,9 @@
 
     <!-- ================= 1. GİRİŞ EKRANI KART YAPISI (GENİŞ QR'LI) ================= -->
     <div id="loginCard" class="bg-[#313338] w-full max-w-[780px] rounded-md p-8 shadow-2xl flex relative animate-fade-in z-50">
-        <!-- Logo -->
-        <div class="absolute top-8 left-8 flex items-center gap-2 text-white font-black text-xl tracking-wider">
-            <i class="fa-brands fa-discord text-2xl"></i> Discord
+        <!-- Logo (MerLo Özgün Tasarım) -->
+        <div class="absolute top-8 left-8 flex items-center gap-2 text-indigo-400 font-black text-2xl tracking-wider">
+            <i class="fa-solid fa-comments text-2xl text-indigo-500"></i> MerLo
         </div>
 
         <!-- Sol Taraf: Form -->
@@ -40,17 +40,16 @@
             </form>
         </div>
 
-        <!-- Sağ Taraf: QR Kod Alanı -->
+        <!-- Sağ Taraf: MerLo Özel QR Kod Alanı -->
         <div class="hidden md:flex w-[40%] flex-col items-center justify-center border-l border-[#3f4147] pl-8 mt-8">
             <div class="bg-white p-3 rounded flex items-center justify-center relative shadow-lg group">
-                <!-- Sahte QR görseli veya FontAwesome ile simüle edilen alan -->
                 <div class="w-36 h-36 bg-[#1e1f22] rounded flex flex-col items-center justify-center text-white text-center p-2">
                     <i class="fa-solid fa-qrcode text-5xl mb-1 text-[#5865f2]"></i>
-                    <span class="text-[10px] uppercase font-bold text-gray-400">MerLo Canlı</span>
+                    <span class="text-[10px] uppercase font-bold text-gray-400 tracking-widest">MERLO AUTH</span>
                 </div>
             </div>
-            <h3 class="text-white font-bold text-lg mt-4 text-center leading-tight">QR Kodu ile giriş yap</h3>
-            <p class="text-xs text-[#b5bac1] text-center mt-2 px-2">Anında giriş yapmak için bu kodu **Discord mobil uygulaması** ile tara.</p>
+            <h3 class="text-white font-bold text-lg mt-4 text-center leading-tight">QR Kodu ile hızlı bağlan</h3>
+            <p class="text-xs text-[#b5bac1] text-center mt-2 px-2">Anında giriş yapmak için bu kodu <b>MerLo Mobil</b> uygulaması ile tara.</p>
             <a href="#" class="text-[11px] text-[#00a8fc] hover:underline mt-3">Veya geçiş anahtarıyla giriş yap</a>
         </div>
     </div>
@@ -106,7 +105,7 @@
                 <button id="logoutBtn" class="text-xs bg-red-600 hover:bg-red-700 px-3 py-1.5 rounded text-white">Çıkış Yap</button>
             </div>
             <div id="chatArea" class="flex-1 p-4 overflow-y-auto flex flex-col gap-4 text-sm text-gray-300">
-                Veritabanı aktif edildiğinde burası akacak kanka.
+                Mesajlar yükleniyor...
             </div>
             <div class="p-4 bg-[#313338]">
                 <form id="messageForm" class="bg-[#383a40] rounded-lg px-4 py-2.5 shadow-inner">
