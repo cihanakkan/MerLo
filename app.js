@@ -20,3 +20,33 @@ const db = getDatabase(app);
 const messagesRef = ref(db, "chat_records");
 
 // GERİ KALAN KODLAR AYNEN KALSIN...
+// ================= EKRANLAR ARASI GEÇİŞ TETİKCİLERİ =================
+
+// Giriş ekranındaki "Kaydol" linkine tıklayınca kayıt ekranını aç
+const goToRegister = document.querySelector('a[href*="Kaydol"]') || document.getElementById('goToRegister'); 
+// Not: Eğer Kaydol linkine özel bir id verdiysen (örn: id="toRegister"), yukarıyı document.getElementById('toRegister') yapabilirsin.
+
+if (goToRegister) {
+    goToRegister.addEventListener('click', (e) => {
+        e.preventDefault();
+        const loginCard = document.getElementById('loginCard');
+        const registerCard = document.getElementById('registerCard');
+        
+        if (loginCard) loginCard.classList.add('hidden');
+        if (registerCard) registerCard.classList.remove('hidden');
+    });
+}
+
+// Kayıt ekranındaki "Giriş yap" linkine tıklayınca giriş ekranına geri dön
+const goToLogin = document.querySelector('a[href*="Giriş"]') || document.getElementById('goToLogin');
+
+if (goToLogin) {
+    goToLogin.addEventListener('click', (e) => {
+        e.preventDefault();
+        const loginCard = document.getElementById('loginCard');
+        const registerCard = document.getElementById('registerCard');
+        
+        if (registerCard) registerCard.classList.add('hidden');
+        if (loginCard) loginCard.classList.remove('hidden');
+    });
+}
