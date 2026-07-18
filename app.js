@@ -2,7 +2,6 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebas
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, updateProfile, signOut } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import { getDatabase, ref, push, onChildAdded, off } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-// Firebase Config Ayarların
 const firebaseConfig = {
     apiKey: "AIzaSyCvE0TxxH9Gey9PZtGA_-VCpHpsUM7hr8E",
     authDomain: "merlo-494a7.firebaseapp.com",
@@ -21,45 +20,61 @@ const messagesRef = ref(db, "chat_records");
 let currentServer = 'MerLo Merkez';
 let currentChannel = 'genel';
 
-// Odalar ve Sunucu Şeması
 const serverData = {
     'MerLo Merkez': { channels: [{ id: 'genel', name: 'genel' }, { id: 'duyurular', name: '📢-duyurular' }] },
     'Yazılımcılar': { channels: [{ id: 'javascript', name: 'javascript' }, { id: 'tasarım', name: 'tasarım' }] },
     'Pendikspor': { channels: [{ id: 'tribun', name: '🔴⚪-tribün' }, { id: 'transfer-gundemi', name: 'transfer-gündemi' }] }
 };
 
-const loginCard = document.getElementById('loginCard');
-const registerCard = document.getElementById('registerCard');
-const appContainer = document.getElementById('appContainer');
+// DOM Elemanları
+const loginPage = document.getElementById('loginPage');
+const registerPage = document.getElementById('registerPage');
+const mainAppPage = document.getElementById('mainAppPage');
 const chatArea = document.getElementById('chatArea');
 
-// ================= EKRANLAR ARASI DINAMIK GEÇİŞ KÖPRÜSÜ =================
-document.addEventListener('click', (e) => {
-    // Kaydol butonuna/yazısına basıldıysa
-    if (e.target.id === 'toRegisterBtn' || e.target.textContent.includes('Kaydol')) {
-        e.preventDefault();
-        if (loginCard) loginCard.classList.add('hidden');
-        if (registerCard) {
-            registerCard.classList.remove('hidden');
-            registerCard.style.display = 'flex';
-        }
-    }
-    
-    // Giriş yap butonuna/yazısına basıldıysa
-    if (e.target.id === 'toLoginBtn' || e.target.textContent.includes('Giriş yap')) {
-        e.preventDefault();
-        if (registerCard) {
-            registerCard.classList.add('hidden');
-            registerCard.style.display = 'none';
-        }
-        if (loginCard) {
-            loginCard.classList.remove('hidden');
-            loginCard.style.display = 'flex';
-        }
-    }
-});
+// ================= YÖNLENDİRİCİ (ROUTER) MOTORU =================
+function handleRouting() {
+    const path = window.location.hash || '#/';
 
-// Firebase Kayıt Formu Tetikleyicisi
+    // Hepsini önce bir gizle
+    loginPage.classList.add('hidden');
+    registerPage.classList.add('hidden');
+    mainAppPage.classList.add('hidden');
+    loginPage.style.display = 'none';
+    registerPage.style.display = 'none';
+    mainAppPage.style.display = 'none';
+
+    // URL'ye göre ilgili sayfayı aç
+    if (path === '#/register') {
+        registerPage.classList.remove('hidden');
+        registerPage.style.display = 'flex';
+    } else if (path === '#/login') {
+        loginPage.classList.remove('hidden');
+        loginPage.style.display = 'flex';
+    } else {
+        // Eğer kullanıcı giriş yapmadıysa ve direkt ana sayfaya gitmeye çalışıyorsa Auth kontrolü tetiklenecek
+        if (auth.currentUser) {
+            mainAppPage.classList.remove('hidden');
+            mainAppPage.style.display = 'flex';
+        } else {
+            // Giriş yoksa zorla login'e at
+            window.location.hash = '#/login';
+        }
+    }
+}
+
+// URL Değişikliklerini ve Sayfa Yüklenmesini Dinle
+window.addEventListener('hashchange', handleRouting);
+window.addEventListener('load', handleRouting);
+
+// Buton Tıklamalarıyla URL Değiştirme
+document.getElementById('btnGoToRegister').addEventListener('click', () => { window.location.hash = '#/register'; });
+document.getElementById('btnGoToLogin').addEventListener('click', () => { window.location.hash = '#/login'; });
+
+
+// ================= FİRÈBASE İŞLEMLERİ =================
+
+// Kayıt Olma
 document.getElementById('registerForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('regEmail').value.trim();
@@ -68,43 +83,45 @@ document.getElementById('registerForm').addEventListener('submit', async (e) => 
     try {
         const res = await createUserWithEmailAndPassword(auth, email, password);
         await updateProfile(res.user, { displayName: username });
-        location.reload();
+        window.location.hash = '#/'; // Başarılıysa ana sayfaya uçur
     } catch (err) { alert("Kayıt Hatası: " + err.message); }
 });
 
-// Firebase Giriş Formu Tetikleyicisi
+// Giriş Yapma
 document.getElementById('loginForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
-    try { await signInWithEmailAndPassword(auth, email, password); } catch (err) { alert("Giriş Bilgileri Hatalı!"); }
+    try { 
+        await signInWithEmailAndPassword(auth, email, password); 
+        window.location.hash = '#/'; 
+    } catch (err) { alert("Giriş Hatalı veya Kullanıcı Bulunamadı!"); }
 });
 
-// Auth Durum Kontrolü
+// Canlı Canlı Oturum Takibi
 onAuthStateChanged(auth, (user) => {
     if(user) {
-        if (loginCard) loginCard.classList.add('hidden');
-        if (registerCard) registerCard.classList.add('hidden');
-        appContainer.classList.remove('hidden');
-        appContainer.style.display = 'flex';
-        
         document.getElementById('currentUserTitle').innerText = user.displayName || "Kullanıcı";
         document.getElementById('userAvatar').innerText = (user.displayName || "K").charAt(0).toUpperCase();
+        if(window.location.hash === '#/login' || window.location.hash === '#/register') {
+            window.location.hash = '#/';
+        }
         renderChannels();
         listenMessages();
     } else {
-        if (appContainer) appContainer.classList.add('hidden');
-        if (loginCard) {
-            loginCard.classList.remove('hidden');
-            loginCard.style.display = 'flex';
+        if(window.location.hash !== '#/register') {
+            window.location.hash = '#/login';
         }
     }
+    handleRouting();
 });
 
-// Çıkış Butonu
-document.getElementById('logoutBtn').addEventListener('click', () => { signOut(auth); });
+// Çıkış
+document.getElementById('logoutBtn').addEventListener('click', () => { 
+    signOut(auth).then(() => { window.location.hash = '#/login'; }); 
+});
 
-// Kanalları HTML'e Çizme Fonksiyonu
+// Arayüz Çizimleri
 function renderChannels() {
     const container = document.getElementById('channelsContainer');
     container.innerHTML = '';
@@ -123,10 +140,9 @@ function renderChannels() {
     });
 }
 
-// Veritabanından Mesajları Anlık Dinleme ve Ekrana Basma
 function listenMessages() {
     chatArea.innerHTML = '';
-    off(messagesRef); // Çakışmaları önlemek için eski dinleyiciyi kapat
+    off(messagesRef);
 
     onChildAdded(messagesRef, (snapshot) => {
         const msg = snapshot.val();
@@ -148,7 +164,6 @@ function listenMessages() {
     });
 }
 
-// Mesaj Gönderme
 document.getElementById('messageForm').addEventListener('submit', (e) => {
     e.preventDefault();
     const input = document.getElementById('messageInput');
@@ -168,7 +183,6 @@ document.getElementById('messageForm').addEventListener('submit', (e) => {
     input.value = '';
 });
 
-// Sunucu Değiştirme Fonksiyonu
 function switchServer(name) {
     currentServer = name;
     currentChannel = serverData[name].channels[0].id;
@@ -178,12 +192,10 @@ function switchServer(name) {
     listenMessages();
 }
 
-// Sol Bardaki Sunucu Butonlarının Dinleyicileri
 document.getElementById('btnServerCentric').addEventListener('click', () => switchServer('MerLo Merkez'));
 document.getElementById('btnServerDev').addEventListener('click', () => switchServer('Yazılımcılar'));
 document.getElementById('btnServerPendik').addEventListener('click', () => switchServer('Pendikspor'));
 
-// Güvenlik için HTML karakter koruması
 function escapeHTML(str) {
     return str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
 }
