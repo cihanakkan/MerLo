@@ -305,6 +305,7 @@ function selectTextChannel(channelId, name) {
     renderChannels(currentServerData.channels || {});
     listenMessages();
     listenTyping();
+    closeLeftPanel();
 }
 
 function joinVoiceChannelPlaceholder(name) {
@@ -642,3 +643,38 @@ document.getElementById('closeInviteModal').addEventListener('click', () => {
 function escapeHTML(str) {
     return String(str).replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag));
 }
+
+// ================= MOBİL PANEL (DRAWER) KONTROLÜ =================
+const leftPanel = document.getElementById('leftPanel');
+const rightPanel = document.getElementById('rightPanel');
+const mobileBackdrop = document.getElementById('mobileBackdrop');
+
+function openLeftPanel() {
+    closeRightPanel();
+    leftPanel.classList.remove('-translate-x-full');
+    mobileBackdrop.classList.remove('hidden');
+}
+function closeLeftPanel() {
+    leftPanel.classList.add('-translate-x-full');
+    if (rightPanel.classList.contains('translate-x-full')) mobileBackdrop.classList.add('hidden');
+}
+function openRightPanel() {
+    closeLeftPanel();
+    rightPanel.classList.remove('translate-x-full');
+    mobileBackdrop.classList.remove('hidden');
+}
+function closeRightPanel() {
+    rightPanel.classList.add('translate-x-full');
+    if (leftPanel.classList.contains('-translate-x-full')) mobileBackdrop.classList.add('hidden');
+}
+function closeAllPanels() {
+    closeLeftPanel();
+    closeRightPanel();
+    mobileBackdrop.classList.add('hidden');
+}
+
+document.getElementById('btnOpenLeftPanel').addEventListener('click', openLeftPanel);
+document.getElementById('btnCloseLeftPanel').addEventListener('click', closeLeftPanel);
+document.getElementById('btnOpenRightPanel').addEventListener('click', openRightPanel);
+document.getElementById('btnCloseRightPanel').addEventListener('click', closeRightPanel);
+mobileBackdrop.addEventListener('click', closeAllPanels);
