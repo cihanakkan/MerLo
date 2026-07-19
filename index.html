@@ -74,16 +74,22 @@
         <div id="leftPanel" class="flex fixed md:static inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform duration-200 shrink-0">
             <!-- Sunucu Çubuğu -->
             <div class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0 overflow-y-auto">
-                <div id="serverIconList" class="flex flex-col items-center gap-2"></div>
+                <button id="btnHome" title="Arkadaşlar / DM" class="relative w-12 h-12 bg-[#5865f2] rounded-2xl flex items-center justify-center text-white transition-all cursor-pointer shrink-0">
+                    <i class="fa-solid fa-house text-lg"></i>
+                    <span id="friendRequestBadge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-4 h-4 rounded-full items-center justify-center">0</span>
+                </button>
                 <div class="w-8 h-[2px] bg-[#35363c] rounded my-1 shrink-0"></div>
+                <div id="serverIconList" class="flex flex-col items-center gap-2"></div>
                 <button id="btnAddServer" title="Sunucu oluştur / katıl" class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-emerald-500 hover:bg-emerald-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer shrink-0">
                     <i class="fa-solid fa-plus text-lg"></i>
                 </button>
             </div>
 
-            <!-- Kanallar Sol Bar -->
+            <!-- Kanallar / Arkadaşlar Sol Bar -->
             <div class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0">
-                <div class="flex-1 overflow-y-auto">
+
+                <!-- SUNUCU GÖRÜNÜMÜ: kanal listesi -->
+                <div id="channelBarPanel" class="flex-1 overflow-y-auto">
                     <div class="h-12 border-b border-[#1f2023] flex items-center justify-between px-4 shrink-0">
                         <h1 id="serverName" class="font-bold text-white truncate">Bir sunucu seç</h1>
                         <div class="flex items-center gap-3 shrink-0">
@@ -107,6 +113,33 @@
                         <div class="flex flex-col gap-0.5" id="voiceChannelsContainer"></div>
                     </div>
                 </div>
+
+                <!-- DM GÖRÜNÜMÜ: arkadaşlar -->
+                <div id="dmBarPanel" class="hidden flex-1 overflow-y-auto flex-col">
+                    <div class="h-12 border-b border-[#1f2023] flex items-center justify-between px-4 shrink-0">
+                        <h1 class="font-bold text-white truncate">Arkadaşlar</h1>
+                        <button id="btnCloseLeftPanel2" class="md:hidden text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                    <div class="p-3">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Arkadaş Ekle</label>
+                        <div class="flex gap-1.5">
+                            <input id="addFriendInput" type="text" placeholder="kullanıcı adı" class="flex-1 min-w-0 bg-[#1e1f22] text-white text-sm p-2 rounded outline-none border border-transparent focus:border-[#5865f2]">
+                            <button id="btnSendFriendRequest" class="bg-[#5865f2] hover:bg-[#4752c4] text-white text-xs font-medium px-2.5 rounded shrink-0">Ekle</button>
+                        </div>
+                        <p id="addFriendError" class="text-red-400 text-xs mt-1.5 hidden"></p>
+                    </div>
+
+                    <div id="friendRequestsSection" class="hidden px-3 mb-3">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Bekleyen İstekler</label>
+                        <div id="friendRequestsList" class="flex flex-col gap-1.5"></div>
+                    </div>
+
+                    <div class="px-3">
+                        <label class="text-xs font-bold text-gray-400 uppercase tracking-wide block mb-2">Arkadaşlarım</label>
+                        <div id="friendsList" class="flex flex-col gap-0.5"></div>
+                    </div>
+                </div>
+
                 <div id="voiceStatusBar" class="hidden bg-[#1e1f22] px-3 py-2 flex items-center justify-between shrink-0">
                     <div class="flex items-center gap-2 overflow-hidden">
                         <i class="fa-solid fa-volume-high text-emerald-500 shrink-0"></i>
@@ -133,6 +166,7 @@
                 </div>
             </div>
         </div>
+
 
         <!-- Chat Penceresi -->
         <div class="flex-1 flex flex-col bg-[#313338] min-w-0">
