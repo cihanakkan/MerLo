@@ -65,54 +65,69 @@
     </div>
 
     <!-- MAIN APP PANELİ (/) -->
-    <div id="mainAppPage" class="hidden fixed inset-0 flex bg-[#313338] z-[100]">
+    <div id="mainAppPage" class="hidden fixed inset-0 flex bg-[#313338] z-[100] overflow-hidden">
 
-        <!-- Sunucu Çubuğu -->
-        <div class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0 overflow-y-auto">
-            <div id="serverIconList" class="flex flex-col items-center gap-2"></div>
-            <div class="w-8 h-[2px] bg-[#35363c] rounded my-1 shrink-0"></div>
-            <button id="btnAddServer" title="Sunucu oluştur / katıl" class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-emerald-500 hover:bg-emerald-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer shrink-0">
-                <i class="fa-solid fa-plus text-lg"></i>
-            </button>
-        </div>
+        <!-- Mobilde arka plan karartma (drawer açıkken) -->
+        <div id="mobileBackdrop" class="hidden fixed inset-0 bg-black/60 z-30 md:hidden"></div>
 
-        <!-- Kanallar Sol Bar -->
-        <div class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0">
-            <div class="flex-1 overflow-y-auto">
-                <div class="h-12 border-b border-[#1f2023] flex items-center justify-between px-4 shrink-0">
-                    <h1 id="serverName" class="font-bold text-white truncate">Bir sunucu seç</h1>
-                    <button id="btnServerInfo" title="Davet kodunu göster" class="text-gray-400 hover:text-white shrink-0">
-                        <i class="fa-solid fa-circle-info"></i>
-                    </button>
-                </div>
-                <div class="p-2">
-                    <div class="flex items-center justify-between px-1 mt-2 mb-1">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Yazı Kanalları</span>
-                        <button id="btnAddTextChannel" title="Kanal ekle" class="text-gray-400 hover:text-white text-xs"><i class="fa-solid fa-plus"></i></button>
-                    </div>
-                    <div class="flex flex-col gap-0.5" id="textChannelsContainer"></div>
-
-                    <div class="flex items-center justify-between px-1 mt-4 mb-1">
-                        <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Sesli Kanallar</span>
-                        <button id="btnAddVoiceChannel" title="Kanal ekle" class="text-gray-400 hover:text-white text-xs"><i class="fa-solid fa-plus"></i></button>
-                    </div>
-                    <div class="flex flex-col gap-0.5" id="voiceChannelsContainer"></div>
-                </div>
+        <!-- SOL PANEL: Sunucu Çubuğu + Kanallar (mobilde kaydırmalı drawer) -->
+        <div id="leftPanel" class="flex fixed md:static inset-y-0 left-0 z-40 -translate-x-full md:translate-x-0 transition-transform duration-200 shrink-0">
+            <!-- Sunucu Çubuğu -->
+            <div class="w-18 bg-[#1e1f22] flex flex-col items-center py-3 gap-2 shrink-0 overflow-y-auto">
+                <div id="serverIconList" class="flex flex-col items-center gap-2"></div>
+                <div class="w-8 h-[2px] bg-[#35363c] rounded my-1 shrink-0"></div>
+                <button id="btnAddServer" title="Sunucu oluştur / katıl" class="w-12 h-12 bg-[#2b2d31] rounded-3xl flex items-center justify-center text-emerald-500 hover:bg-emerald-600 hover:text-white hover:rounded-2xl transition-all cursor-pointer shrink-0">
+                    <i class="fa-solid fa-plus text-lg"></i>
+                </button>
             </div>
-            <div class="h-14 bg-[#232428] flex items-center justify-between px-2 shrink-0">
-                <div class="flex items-center gap-2 overflow-hidden">
-                    <div id="userAvatar" class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0">?</div>
-                    <span id="currentUserTitle" class="text-sm font-semibold text-white truncate">Yükleniyor...</span>
+
+            <!-- Kanallar Sol Bar -->
+            <div class="w-60 bg-[#2b2d31] flex flex-col justify-between shrink-0">
+                <div class="flex-1 overflow-y-auto">
+                    <div class="h-12 border-b border-[#1f2023] flex items-center justify-between px-4 shrink-0">
+                        <h1 id="serverName" class="font-bold text-white truncate">Bir sunucu seç</h1>
+                        <div class="flex items-center gap-3 shrink-0">
+                            <button id="btnServerInfo" title="Davet kodunu göster" class="text-gray-400 hover:text-white">
+                                <i class="fa-solid fa-circle-info"></i>
+                            </button>
+                            <button id="btnCloseLeftPanel" class="md:hidden text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+                        </div>
+                    </div>
+                    <div class="p-2">
+                        <div class="flex items-center justify-between px-1 mt-2 mb-1">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Yazı Kanalları</span>
+                            <button id="btnAddTextChannel" title="Kanal ekle" class="text-gray-400 hover:text-white text-xs"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        <div class="flex flex-col gap-0.5" id="textChannelsContainer"></div>
+
+                        <div class="flex items-center justify-between px-1 mt-4 mb-1">
+                            <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Sesli Kanallar</span>
+                            <button id="btnAddVoiceChannel" title="Kanal ekle" class="text-gray-400 hover:text-white text-xs"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        <div class="flex flex-col gap-0.5" id="voiceChannelsContainer"></div>
+                    </div>
                 </div>
-                <button id="logoutBtn" class="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-white shrink-0">Çıkış</button>
+                <div class="h-14 bg-[#232428] flex items-center justify-between px-2 shrink-0">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <div id="userAvatar" class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0">?</div>
+                        <span id="currentUserTitle" class="text-sm font-semibold text-white truncate">Yükleniyor...</span>
+                    </div>
+                    <button id="logoutBtn" class="text-xs bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-white shrink-0">Çıkış</button>
+                </div>
             </div>
         </div>
 
         <!-- Chat Penceresi -->
         <div class="flex-1 flex flex-col bg-[#313338] min-w-0">
-            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 gap-2 shrink-0">
+            <div class="h-12 border-b border-[#1f2023] flex items-center px-3 md:px-4 gap-2 shrink-0">
+                <button id="btnOpenLeftPanel" class="md:hidden text-gray-300 hover:text-white shrink-0" title="Sunucular ve kanallar">
+                    <i class="fa-solid fa-bars text-lg"></i>
+                </button>
                 <i class="fa-solid fa-hashtag text-gray-400"></i>
-                <span id="activeChannelTitle" class="font-bold text-white">kanal seç</span>
+                <span id="activeChannelTitle" class="font-bold text-white truncate">kanal seç</span>
+                <button id="btnOpenRightPanel" class="md:hidden text-gray-300 hover:text-white shrink-0 ml-auto" title="Üyeler">
+                    <i class="fa-solid fa-users text-lg"></i>
+                </button>
             </div>
             <div id="chatArea" class="flex-1 p-4 overflow-y-auto flex flex-col gap-3 text-sm"></div>
             <div id="typingIndicator" class="px-4 text-xs text-gray-400 italic h-[18px]"></div>
@@ -124,10 +139,12 @@
             </div>
         </div>
 
+
         <!-- Aktif Üyeler Barı -->
-        <div class="w-60 bg-[#2b2d31] shrink-0 overflow-y-auto hidden md:block">
-            <div class="h-12 border-b border-[#1f2023] flex items-center px-4 shrink-0">
+        <div id="rightPanel" class="w-60 bg-[#2b2d31] shrink-0 overflow-y-auto fixed md:static inset-y-0 right-0 z-40 translate-x-full md:translate-x-0 transition-transform duration-200">
+            <div class="h-12 border-b border-[#1f2023] flex items-center justify-between px-4 shrink-0">
                 <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Üyeler</span>
+                <button id="btnCloseRightPanel" class="md:hidden text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
             </div>
             <div id="memberList" class="p-2 flex flex-col gap-1"></div>
         </div>
