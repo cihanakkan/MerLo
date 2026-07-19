@@ -107,6 +107,23 @@
                         <div class="flex flex-col gap-0.5" id="voiceChannelsContainer"></div>
                     </div>
                 </div>
+                <div id="voiceStatusBar" class="hidden bg-[#1e1f22] px-3 py-2 flex items-center justify-between shrink-0">
+                    <div class="flex items-center gap-2 overflow-hidden">
+                        <i class="fa-solid fa-volume-high text-emerald-500 shrink-0"></i>
+                        <div class="overflow-hidden">
+                            <div class="text-xs font-bold text-emerald-500 truncate">Sesli bağlı</div>
+                            <div id="voiceStatusChannelName" class="text-[11px] text-gray-400 truncate">—</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 shrink-0">
+                        <button id="btnToggleMute" title="Sesi kapat/aç" class="w-7 h-7 rounded-full bg-[#2b2d31] hover:bg-[#35373c] flex items-center justify-center text-gray-200">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                        <button id="btnLeaveVoice" title="Sesli odadan ayrıl" class="w-7 h-7 rounded-full bg-red-600 hover:bg-red-700 flex items-center justify-center text-white">
+                            <i class="fa-solid fa-phone-slash text-xs"></i>
+                        </button>
+                    </div>
+                </div>
                 <div class="h-14 bg-[#232428] flex items-center justify-between px-2 shrink-0">
                     <div class="flex items-center gap-2 overflow-hidden">
                         <div id="userAvatar" class="w-8 h-8 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-sm text-white shrink-0">?</div>
