@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     getDatabase, ref, push, set, get, update, remove,
-    onValue, onChildAdded, off, query, orderByChild, equalTo,
+    onValue, onChildAdded, onChildRemoved, off, query, orderByChild, equalTo,
     limitToLast, onDisconnect, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
@@ -41,6 +41,22 @@ let typingListenerRef = null;
 let typingTimeoutHandle = null;
 let membersCache = [];           // [{ uid, username }] - mention otomatik tamamlama için
 let mentionQueryStart = -1;      // input içinde @'nin başladığı index, -1 = aktif değil
+
+// --- Sesli sohbet (WebRTC) durumu ---
+const RTC_CONFIG = {
+    iceServers: [
+        { urls: 'stun:stun.l.google.com:19302' },
+        { urls: 'stun:stun1.l.google.com:19302' }
+    ]
+};
+let localStream = null;
+let peerConnections = {};        // { otherUid: RTCPeerConnection }
+let peerListenerRefs = {};       // { otherUid: [refs to off() on cleanup] }
+let currentVoiceChannelId = null;
+let currentVoiceChannelName = null;
+let voiceMembersListenerRef = null;
+let voiceRowListeners = [];      // kanal listesindeki "kimler sesli odada" göstergeleri
+let isMuted = false;
 
 // ================= DOM ELEMANLARI =================
 const loginPage = document.getElementById('loginPage');
@@ -118,6 +134,7 @@ document.getElementById('loginForm').addEventListener('submit', async (e) => {
 });
 
 document.getElementById('logoutBtn').addEventListener('click', () => {
+    if (currentVoiceChannelId) leaveVoiceChannel();
     signOut(auth).then(() => { window.location.hash = '#/login'; });
 });
 
@@ -211,6 +228,7 @@ async function renderServerIcons() {
 }
 
 function selectServer(serverId) {
+    if (currentVoiceChannelId) leaveVoiceChannel();
     currentServerId = serverId;
     currentChannelId = null;
     if (channelsListenerRef) off(channelsListenerRef);
@@ -277,6 +295,8 @@ async function joinServerByCode(code) {
 
 // ================= KANALLAR =================
 function renderChannels(channels) {
+    voiceRowListeners.forEach(r => off(r));
+    voiceRowListeners = [];
     textChannelsContainer.innerHTML = '';
     voiceChannelsContainer.innerHTML = '';
 
@@ -285,13 +305,37 @@ function renderChannels(channels) {
     entries.forEach(([channelId, ch]) => {
         const isActive = channelId === currentChannelId;
         const div = document.createElement('div');
-        div.className = `flex items-center px-2 py-1.5 rounded cursor-pointer ${isActive ? 'bg-[#404249] text-white' : 'text-gray-400 hover:bg-[#35373c]'}`;
 
         if (ch.type === 'voice') {
-            div.innerHTML = `<i class="fa-solid fa-volume-high text-gray-500 mr-2 text-sm"></i><span class="text-sm font-medium">${escapeHTML(ch.name)}</span>`;
-            div.onclick = () => joinVoiceChannelPlaceholder(ch.name);
-            voiceChannelsContainer.appendChild(div);
+            const isJoined = channelId === currentVoiceChannelId;
+            const wrapper = document.createElement('div');
+            wrapper.className = `flex flex-col px-2 py-1.5 rounded cursor-pointer ${isJoined ? 'bg-[#2f3c37]' : 'hover:bg-[#35373c]'}`;
+            wrapper.innerHTML = `
+                <div class="flex items-center">
+                    <i class="fa-solid fa-volume-high ${isJoined ? 'text-emerald-500' : 'text-gray-500'} mr-2 text-sm"></i>
+                    <span class="text-sm font-medium ${isJoined ? 'text-emerald-400' : 'text-gray-400'}">${escapeHTML(ch.name)}</span>
+                </div>
+                <div class="voice-row-members flex flex-col gap-0.5 mt-1 ml-6"></div>
+            `;
+            wrapper.querySelector('div').onclick = () => toggleVoiceChannel(channelId, ch.name);
+            voiceChannelsContainer.appendChild(wrapper);
+
+            // O sesli kanalda kimlerin olduğunu canlı göster
+            const membersEl = wrapper.querySelector('.voice-row-members');
+            const vmRef = ref(db, `servers/${currentServerId}/channels/${channelId}/voiceMembers`);
+            voiceRowListeners.push(vmRef);
+            onValue(vmRef, (snap) => {
+                const members = snap.val() || {};
+                const names = Object.values(members).map(m => m.username);
+                membersEl.innerHTML = names.map(n => `
+                    <div class="flex items-center gap-1.5 text-xs text-gray-400">
+                        <div class="w-4 h-4 bg-indigo-600 rounded-full flex items-center justify-center text-[9px] font-bold text-white">${escapeHTML(n.charAt(0).toUpperCase())}</div>
+                        <span class="truncate">${escapeHTML(n)}</span>
+                    </div>
+                `).join('');
+            });
         } else {
+            div.className = `flex items-center px-2 py-1.5 rounded cursor-pointer ${isActive ? 'bg-[#404249] text-white' : 'text-gray-400 hover:bg-[#35373c]'}`;
             div.innerHTML = `<span class="text-gray-500 mr-2">#</span><span class="text-sm font-medium">${escapeHTML(ch.name)}</span>`;
             div.onclick = () => selectTextChannel(channelId, ch.name);
             textChannelsContainer.appendChild(div);
@@ -315,11 +359,209 @@ function selectTextChannel(channelId, name) {
     closeLeftPanel();
 }
 
-function joinVoiceChannelPlaceholder(name) {
-    // Gerçek sesli oda (WebRTC) sonraki fazda eklenecek.
-    // Şimdilik kullanıcıya net bir bilgi veriyoruz, sessizce hiçbir şey yapmıyoruz.
-    alert(`"${name}" sesli odasına katılma özelliği yakında geliyor 🎙️ (WebRTC entegrasyonu bir sonraki fazda eklenecek)`);
+// ================= SESLİ SOHBET (WebRTC) =================
+
+function pairKey(a, b) {
+    return [a, b].sort().join('__');
 }
+
+function toggleVoiceChannel(channelId, name) {
+    if (currentVoiceChannelId === channelId) {
+        leaveVoiceChannel();
+    } else {
+        joinVoiceChannel(channelId, name);
+    }
+}
+
+async function joinVoiceChannel(channelId, name) {
+    if (currentVoiceChannelId) {
+        await leaveVoiceChannel();
+    }
+
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    } catch (err) {
+        alert('Mikrofon erişimi alınamadı: ' + err.message + '\nTarayıcı ayarlarından MerLo\'ya mikrofon izni verdiğinden emin ol.');
+        return;
+    }
+
+    currentVoiceChannelId = channelId;
+    currentVoiceChannelName = name;
+    isMuted = false;
+    updateVoiceStatusBar();
+    renderChannels(currentServerData.channels || {});
+
+    const uid = auth.currentUser.uid;
+    const myVoiceRef = ref(db, `servers/${currentServerId}/channels/${channelId}/voiceMembers/${uid}`);
+    await set(myVoiceRef, {
+        username: auth.currentUser.displayName || 'Anonim',
+        joinedAt: serverTimestamp()
+    });
+    onDisconnect(myVoiceRef).remove();
+
+    // Şu an odada olanlarla bağlantı kur
+    const existingSnap = await get(ref(db, `servers/${currentServerId}/channels/${channelId}/voiceMembers`));
+    const existing = existingSnap.val() || {};
+    Object.keys(existing).forEach(otherUid => {
+        if (otherUid !== uid) connectToPeer(channelId, otherUid);
+    });
+
+    // Yeni katılan / ayrılan üyeleri dinle
+    const voiceMembersRef = ref(db, `servers/${currentServerId}/channels/${channelId}/voiceMembers`);
+    voiceMembersListenerRef = voiceMembersRef;
+
+    onChildAdded(voiceMembersRef, (snap) => {
+        const otherUid = snap.key;
+        if (otherUid === uid || peerConnections[otherUid] || currentVoiceChannelId !== channelId) return;
+        connectToPeer(channelId, otherUid);
+    });
+    onChildRemoved(voiceMembersRef, (snap) => {
+        disconnectPeer(snap.key);
+    });
+}
+
+function connectToPeer(channelId, otherUid) {
+    const myUid = auth.currentUser.uid;
+    const key = pairKey(myUid, otherUid);
+    const basePath = `servers/${currentServerId}/channels/${channelId}/rtc/${key}`;
+
+    const pc = new RTCPeerConnection(RTC_CONFIG);
+    peerConnections[otherUid] = pc;
+    peerListenerRefs[otherUid] = [];
+
+    localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+
+    pc.ontrack = (event) => playRemoteAudio(otherUid, event.streams[0]);
+
+    const myCandidatesRef = ref(db, `${basePath}/candidates/${myUid}`);
+    pc.onicecandidate = (event) => {
+        if (event.candidate) push(myCandidatesRef, event.candidate.toJSON());
+    };
+
+    // Çakışmayı önlemek için uid'i küçük olan taraf her zaman "offer" atar
+    const amInitiator = myUid < otherUid;
+
+    if (amInitiator) {
+        pc.createOffer().then(async (offer) => {
+            await pc.setLocalDescription(offer);
+            set(ref(db, `${basePath}/offer`), { sdp: offer.sdp, type: offer.type });
+        });
+
+        const answerRef = ref(db, `${basePath}/answer`);
+        peerListenerRefs[otherUid].push(answerRef);
+        onValue(answerRef, (snap) => {
+            const answer = snap.val();
+            if (answer && !pc.currentRemoteDescription) {
+                pc.setRemoteDescription(new RTCSessionDescription(answer)).catch(() => {});
+            }
+        });
+    } else {
+        const offerRef = ref(db, `${basePath}/offer`);
+        peerListenerRefs[otherUid].push(offerRef);
+        onValue(offerRef, async (snap) => {
+            const offer = snap.val();
+            if (offer && !pc.currentRemoteDescription) {
+                await pc.setRemoteDescription(new RTCSessionDescription(offer));
+                const answer = await pc.createAnswer();
+                await pc.setLocalDescription(answer);
+                set(ref(db, `${basePath}/answer`), { sdp: answer.sdp, type: answer.type });
+            }
+        });
+    }
+
+    const theirCandidatesRef = ref(db, `${basePath}/candidates/${otherUid}`);
+    peerListenerRefs[otherUid].push(theirCandidatesRef);
+    onChildAdded(theirCandidatesRef, (snap) => {
+        const candidate = snap.val();
+        if (candidate) pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+    });
+}
+
+function disconnectPeer(otherUid) {
+    const pc = peerConnections[otherUid];
+    if (pc) {
+        pc.close();
+        delete peerConnections[otherUid];
+    }
+    removeRemoteAudio(otherUid);
+    if (peerListenerRefs[otherUid]) {
+        peerListenerRefs[otherUid].forEach(r => off(r));
+        delete peerListenerRefs[otherUid];
+    }
+}
+
+async function leaveVoiceChannel() {
+    if (!currentVoiceChannelId) return;
+    const uid = auth.currentUser.uid;
+    const channelId = currentVoiceChannelId;
+    const connectedPeers = Object.keys(peerConnections);
+
+    connectedPeers.forEach(disconnectPeer);
+
+    if (localStream) {
+        localStream.getTracks().forEach(t => t.stop());
+        localStream = null;
+    }
+
+    if (voiceMembersListenerRef) {
+        off(voiceMembersListenerRef);
+        voiceMembersListenerRef = null;
+    }
+
+    await remove(ref(db, `servers/${currentServerId}/channels/${channelId}/voiceMembers/${uid}`)).catch(() => {});
+
+    // Eski sinyalleşme verisini temizle — aksi halde tekrar bağlanınca eski (bayat)
+    // offer/answer verisiyle karışabilir.
+    connectedPeers.forEach(otherUid => {
+        const key = pairKey(uid, otherUid);
+        remove(ref(db, `servers/${currentServerId}/channels/${channelId}/rtc/${key}`)).catch(() => {});
+    });
+
+    currentVoiceChannelId = null;
+    currentVoiceChannelName = null;
+    updateVoiceStatusBar();
+    if (currentServerData) renderChannels(currentServerData.channels || {});
+}
+
+function toggleMute() {
+    if (!localStream) return;
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach(t => { t.enabled = !isMuted; });
+    updateVoiceStatusBar();
+}
+
+function playRemoteAudio(uid, stream) {
+    let audioEl = document.getElementById(`remoteAudio-${uid}`);
+    if (!audioEl) {
+        audioEl = document.createElement('audio');
+        audioEl.id = `remoteAudio-${uid}`;
+        audioEl.autoplay = true;
+        document.body.appendChild(audioEl);
+    }
+    audioEl.srcObject = stream;
+}
+
+function removeRemoteAudio(uid) {
+    const el = document.getElementById(`remoteAudio-${uid}`);
+    if (el) el.remove();
+}
+
+function updateVoiceStatusBar() {
+    const bar = document.getElementById('voiceStatusBar');
+    if (!currentVoiceChannelId) {
+        bar.classList.add('hidden');
+        return;
+    }
+    bar.classList.remove('hidden');
+    document.getElementById('voiceStatusChannelName').innerText = currentVoiceChannelName;
+    const muteBtn = document.getElementById('btnToggleMute');
+    muteBtn.innerHTML = isMuted ? '<i class="fa-solid fa-microphone-slash"></i>' : '<i class="fa-solid fa-microphone"></i>';
+    muteBtn.classList.toggle('bg-red-600', isMuted);
+    muteBtn.classList.toggle('text-white', isMuted);
+}
+
+document.getElementById('btnToggleMute').addEventListener('click', toggleMute);
+document.getElementById('btnLeaveVoice').addEventListener('click', leaveVoiceChannel);
 
 async function createChannel(name, type) {
     const slug = name.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-ığüşöçİĞÜŞÖÇ]/g, '');
