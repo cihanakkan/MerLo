@@ -125,6 +125,13 @@ onAuthStateChanged(auth, (user) => {
     if (user) {
         document.getElementById('currentUserTitle').innerText = user.displayName || "Kullanıcı";
         document.getElementById('userAvatar').innerText = (user.displayName || "K").charAt(0).toUpperCase();
+
+        // Kullanıcı adını veritabanıyla senkronize et — eski hesaplarda bu kayıt hiç
+        // oluşmamış olabilir (üye listesinde "Bilinmeyen" görünmesinin sebebi buydu).
+        update(ref(db, `users/${user.uid}`), {
+            username: user.displayName || 'Kullanıcı'
+        }).catch(() => {});
+
         if (window.location.hash === '#/login' || window.location.hash === '#/register') {
             window.location.hash = '#/';
         }
