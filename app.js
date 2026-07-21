@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
 import {
     getDatabase, ref, push, set, get, update, remove,
-    onValue, onChildAdded, onChildRemoved, off, query, orderByChild, equalTo,
+    onValue, onChildAdded, onChildChanged, onChildRemoved, off, query, orderByChild, equalTo,
     limitToLast, onDisconnect, serverTimestamp
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
@@ -50,6 +50,12 @@ let friendsListenerRef = null;
 let friendRequestsListenerRef = null;
 let dmMessagesListenerRef = null;
 let friendsCache = [];           // [{ uid, username }]
+
+// --- Bildirimler ---
+let unreadCount = 0;
+let originalTitle = document.title;
+let dmGlobalListeners = {};      // { friendUid: ref } - her arkadaşın DM'ini hafifçe dinler
+let unreadDmUids = new Set();    // sohbeti açılmamış, yeni mesajı olan arkadaşlar
 
 // --- Sesli sohbet (WebRTC) durumu ---
 const RTC_CONFIG = {
@@ -170,6 +176,8 @@ onAuthStateChanged(auth, (user) => {
         setupPresence(user.uid);
         listenMyServers(user.uid);
         listenFriendRequests();
+        listenFriends();
+        requestNotificationPermission();
     } else {
         cleanupListeners();
         if (window.location.hash !== '#/register') {
@@ -261,9 +269,20 @@ function selectServer(serverId) {
 function listenServerData(serverId) {
     const serverRef = ref(db, `servers/${serverId}`);
     channelsListenerRef = serverRef;
-    onValue(serverRef, (snap) => {
+    onValue(serverRef, async (snap) => {
         currentServerData = snap.val();
-        if (!currentServerData) return;
+        if (!currentServerData) {
+            // Sunucu silinmiş (owner sildi) — kendi listemden de temizle
+            if (auth.currentUser) {
+                await remove(ref(db, `users/${auth.currentUser.uid}/servers/${serverId}`)).catch(() => {});
+            }
+            if (currentServerId === serverId) {
+                currentServerId = null;
+                currentChannelId = null;
+                listenMyServers(auth.currentUser.uid);
+            }
+            return;
+        }
         serverNameEl.innerText = currentServerData.name;
         renderChannels(currentServerData.channels || {});
     });
@@ -304,6 +323,11 @@ async function joinServerByCode(code) {
 
     const serverId = Object.keys(snap.val())[0];
     const uid = auth.currentUser.uid;
+
+    const banSnap = await get(ref(db, `servers/${serverId}/bannedUids/${uid}`));
+    if (banSnap.exists()) {
+        throw new Error('Bu sunucudan yasaklandın, davet koduyla katılamazsın.');
+    }
 
     await set(ref(db, `servers/${serverId}/members/${uid}`), {
         role: 'member', joinedAt: serverTimestamp()
@@ -602,8 +626,21 @@ function listenMembers(serverId) {
     membersListenerRef = membersRef;
     onValue(membersRef, async (snap) => {
         const members = snap.val() || {};
+        const myUid = auth.currentUser?.uid;
+
+        // Ben bu sunucudan çıkarıldıysam (kick/ban) kendi listemden temizle
+        if (myUid && !members[myUid] && serverId === currentServerId) {
+            await remove(ref(db, `users/${myUid}/servers/${serverId}`)).catch(() => {});
+            alert('Bu sunucudan çıkarıldın.');
+            currentServerId = null;
+            currentChannelId = null;
+            listenMyServers(myUid);
+            return;
+        }
+
         memberList.innerHTML = '';
         membersCache = [];
+        const isOwner = currentServerData && currentServerData.ownerId === myUid;
 
         for (const uid of Object.keys(members)) {
             const [profileSnap, statusSnap] = await Promise.all([
@@ -617,46 +654,154 @@ function listenMembers(serverId) {
             membersCache.push({ uid, username: profile.username || 'Bilinmeyen' });
 
             const div = document.createElement('div');
-            div.className = 'flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-default';
+            div.className = 'group flex items-center gap-2 px-2 py-1.5 rounded hover:bg-[#35373c] cursor-default';
             div.innerHTML = `
                 <div class="relative shrink-0">
                     <div class="w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-xs text-white">${escapeHTML((profile.username || '?').charAt(0).toUpperCase())}</div>
                     <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#2b2d31] ${isOnline ? 'bg-emerald-500' : 'bg-gray-500'}"></span>
                 </div>
-                <span class="text-sm ${isOnline ? 'text-gray-200' : 'text-gray-500'} truncate">${escapeHTML(profile.username || 'Bilinmeyen')}</span>
+                <span class="text-sm ${isOnline ? 'text-gray-200' : 'text-gray-500'} truncate flex-1">${escapeHTML(profile.username || 'Bilinmeyen')}</span>
+                ${isOwner && uid !== myUid ? `
+                <div class="hidden group-hover:flex items-center gap-1 shrink-0">
+                    <button title="Sunucudan at" class="kick-btn text-gray-400 hover:text-yellow-400 text-xs"><i class="fa-solid fa-user-minus"></i></button>
+                    <button title="Yasakla" class="ban-btn text-gray-400 hover:text-red-500 text-xs"><i class="fa-solid fa-ban"></i></button>
+                </div>` : ''}
             `;
+            if (isOwner && uid !== myUid) {
+                div.querySelector('.kick-btn').onclick = () => kickMember(uid, profile.username);
+                div.querySelector('.ban-btn').onclick = () => banMember(uid, profile.username);
+            }
             memberList.appendChild(div);
         }
     });
 }
 
+async function kickMember(uid, username) {
+    if (!confirm(`${username} adlı kullanıcıyı sunucudan atmak istediğine emin misin?`)) return;
+    await remove(ref(db, `servers/${currentServerId}/members/${uid}`));
+}
+
+async function banMember(uid, username) {
+    if (!confirm(`${username} adlı kullanıcıyı yasaklamak istediğine emin misin? Bir daha davet koduyla katılamaz.`)) return;
+    await remove(ref(db, `servers/${currentServerId}/members/${uid}`));
+    await set(ref(db, `servers/${currentServerId}/bannedUids/${uid}`), true);
+}
+
 // ================= MESAJLAR =================
+function renderMessageBubble(msg, msgId, isMine, onEdit, onDelete) {
+    const div = document.createElement('div');
+    div.className = "group relative flex flex-col bg-[#383a40] p-2.5 rounded shadow-sm max-w-xl self-start w-fit mt-1 animate-fade-in";
+    div.dataset.msgId = msgId;
+    div.innerHTML = `
+        <div class="flex items-center gap-2 mb-1">
+            <span class="font-bold text-indigo-400 text-xs">${escapeHTML(msg.user)}</span>
+            <span class="text-[10px] text-gray-500">${escapeHTML(msg.time)}${msg.edited ? ' <span class="italic">(düzenlendi)</span>' : ''}</span>
+        </div>
+        <p class="msg-text text-gray-200 text-sm">${highlightMentions(msg.text)}</p>
+        ${isMine ? `
+        <div class="hidden group-hover:flex items-center gap-2 absolute -top-2.5 right-2 bg-[#232428] rounded px-1.5 py-0.5 shadow">
+            <button class="edit-btn text-gray-400 hover:text-white text-xs" title="Düzenle"><i class="fa-solid fa-pen"></i></button>
+            <button class="delete-btn text-gray-400 hover:text-red-500 text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
+        </div>` : ''}
+    `;
+    if (isMine) {
+        div.querySelector('.edit-btn').onclick = () => startEditMessage(div, msg.text, onEdit);
+        div.querySelector('.delete-btn').onclick = () => {
+            if (confirm('Bu mesajı silmek istediğine emin misin?')) onDelete();
+        };
+    }
+    return div;
+}
+
+function startEditMessage(div, currentText, onSave) {
+    const textEl = div.querySelector('.msg-text');
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = currentText;
+    input.className = 'bg-[#1e1f22] text-white text-sm p-1.5 rounded outline-none border border-[#5865f2] w-full';
+    textEl.replaceWith(input);
+    input.focus();
+    input.setSelectionRange(input.value.length, input.value.length);
+    let finished = false;
+
+    const restore = (text) => {
+        const p = document.createElement('p');
+        p.className = 'msg-text text-gray-200 text-sm';
+        p.innerHTML = highlightMentions(text);
+        input.replaceWith(p);
+    };
+
+    const finish = (save) => {
+        if (finished) return;
+        finished = true;
+        const newText = input.value.trim();
+        if (save && newText && newText !== currentText) {
+            onSave(newText); // onChildChanged zaten metni güncelleyecek
+            restore(newText);
+        } else {
+            restore(currentText);
+        }
+    };
+    input.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') { e.preventDefault(); finish(true); }
+        else if (e.key === 'Escape') { e.preventDefault(); finish(false); }
+    });
+    input.addEventListener('blur', () => finish(false));
+}
+
 function listenMessages() {
     if (messagesListenerRef) off(messagesListenerRef);
     chatArea.innerHTML = '';
 
     if (!currentServerId || !currentChannelId) return;
+    const serverId = currentServerId, channelId = currentChannelId;
 
     const msgsRef = query(
-        ref(db, `servers/${currentServerId}/channels/${currentChannelId}/messages`),
+        ref(db, `servers/${serverId}/channels/${channelId}/messages`),
         limitToLast(50)
     );
     messagesListenerRef = msgsRef;
 
+    const listenStartTime = Date.now();
+
     onChildAdded(msgsRef, (snapshot) => {
         const msg = snapshot.val();
         if (!msg) return;
-        const div = document.createElement('div');
-        div.className = "flex flex-col bg-[#383a40] p-2.5 rounded shadow-sm max-w-xl self-start w-fit mt-1 animate-fade-in";
-        div.innerHTML = `
-            <div class="flex items-center gap-2 mb-1">
-                <span class="font-bold text-indigo-400 text-xs">${escapeHTML(msg.user)}</span>
-                <span class="text-[10px] text-gray-500">${escapeHTML(msg.time)}</span>
-            </div>
-            <p class="text-gray-200 text-sm">${highlightMentions(msg.text)}</p>
-        `;
+        const msgId = snapshot.key;
+        const isMine = msg.userId === auth.currentUser?.uid;
+        const msgRef = ref(db, `servers/${serverId}/channels/${channelId}/messages/${msgId}`);
+
+        const div = renderMessageBubble(msg, msgId, isMine,
+            (newText) => update(msgRef, { text: newText, edited: true }),
+            () => remove(msgRef)
+        );
         chatArea.appendChild(div);
         chatArea.scrollTop = chatArea.scrollHeight;
+
+        // Yeni mesaj (kanal yüklendikten sonra gelen) beni etiketliyorsa bildirim göster
+        const myUsername = auth.currentUser?.displayName;
+        if (!isMine && document.hidden && msg.createdAt && msg.createdAt > listenStartTime && myUsername) {
+            const mentionRegex = new RegExp(`@${myUsername.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+            if (mentionRegex.test(msg.text)) {
+                showBrowserNotification(`${msg.user} seni etiketledi`, msg.text);
+                bumpUnread();
+            }
+        }
+    });
+
+    onChildChanged(msgsRef, (snapshot) => {
+        const msg = snapshot.val();
+        const div = chatArea.querySelector(`[data-msg-id="${snapshot.key}"]`);
+        if (!div || !msg) return;
+        const textEl = div.querySelector('.msg-text');
+        if (textEl) textEl.innerHTML = highlightMentions(msg.text);
+        const timeEl = div.querySelector('span.text-\\[10px\\]');
+        if (timeEl && msg.edited) timeEl.innerHTML = `${escapeHTML(msg.time)} <span class="italic">(düzenlendi)</span>`;
+    });
+
+    onChildRemoved(msgsRef, (snapshot) => {
+        const div = chatArea.querySelector(`[data-msg-id="${snapshot.key}"]`);
+        if (div) div.remove();
     });
 }
 
@@ -959,10 +1104,19 @@ function listenFriendRequests() {
     const myUid = auth.currentUser.uid;
     const reqRef = ref(db, `friendRequests/${myUid}`);
     friendRequestsListenerRef = reqRef;
+    let prevCount = -1; // -1 = henüz ilk yükleme yapılmadı, bildirim tetiklemesin
 
     onValue(reqRef, (snap) => {
         const requests = snap.val() || {};
         const entries = Object.entries(requests);
+
+        if (prevCount !== -1 && entries.length > prevCount) {
+            const newest = entries[entries.length - 1][1];
+            showBrowserNotification('Yeni arkadaşlık isteği', `${newest.username} sana istek gönderdi`);
+            bumpUnread();
+        }
+        prevCount = entries.length;
+
         const badge = document.getElementById('friendRequestBadge');
         const section = document.getElementById('friendRequestsSection');
         const listEl = document.getElementById('friendRequestsList');
@@ -1039,6 +1193,7 @@ function listenFriends() {
             friendsCache.push({ uid, username: profile.username });
 
             const isActive = currentView === 'dm' && currentDmUid === uid;
+            const hasUnread = unreadDmUids.has(uid);
             const row = document.createElement('div');
             row.className = `flex items-center gap-2 px-2 py-1.5 rounded cursor-pointer ${isActive ? 'bg-[#404249]' : 'hover:bg-[#35373c]'}`;
             row.innerHTML = `
@@ -1046,11 +1201,13 @@ function listenFriends() {
                     <div class="w-7 h-7 bg-indigo-600 rounded-full flex items-center justify-center font-bold text-xs text-white">${escapeHTML((profile.username || '?').charAt(0).toUpperCase())}</div>
                     <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#2b2d31] ${isOnline ? 'bg-emerald-500' : 'bg-gray-500'}"></span>
                 </div>
-                <span class="text-sm ${isActive ? 'text-white' : 'text-gray-300'} truncate">${escapeHTML(profile.username)}</span>
+                <span class="text-sm ${isActive ? 'text-white' : 'text-gray-300'} truncate flex-1">${escapeHTML(profile.username)}</span>
+                ${hasUnread ? '<span class="w-2 h-2 rounded-full bg-red-500 shrink-0"></span>' : ''}
             `;
             row.onclick = () => openDm(uid, profile.username);
             listEl.appendChild(row);
         }
+        listenGlobalDmNotifications();
     });
 }
 
@@ -1076,18 +1233,104 @@ function listenDmMessages() {
     onChildAdded(msgsRef, (snapshot) => {
         const msg = snapshot.val();
         if (!msg) return;
+        const msgId = snapshot.key;
         const isMine = msg.senderId === auth.currentUser.uid;
+        const msgRef = ref(db, `dms/${dmKey}/messages/${msgId}`);
+
         const div = document.createElement('div');
-        div.className = `flex flex-col ${isMine ? 'bg-[#3f4bd1]/20 self-end' : 'bg-[#383a40] self-start'} p-2.5 rounded shadow-sm max-w-xl w-fit mt-1 animate-fade-in`;
+        div.className = `group relative flex flex-col ${isMine ? 'bg-[#3f4bd1]/20 self-end' : 'bg-[#383a40] self-start'} p-2.5 rounded shadow-sm max-w-xl w-fit mt-1 animate-fade-in`;
+        div.dataset.msgId = msgId;
         div.innerHTML = `
             <div class="flex items-center gap-2 mb-1">
                 <span class="font-bold text-indigo-400 text-xs">${escapeHTML(msg.user)}</span>
-                <span class="text-[10px] text-gray-500">${escapeHTML(msg.time)}</span>
+                <span class="text-[10px] text-gray-500">${escapeHTML(msg.time)}${msg.edited ? ' <span class="italic">(düzenlendi)</span>' : ''}</span>
             </div>
-            <p class="text-gray-200 text-sm">${escapeHTML(msg.text)}</p>
+            <p class="msg-text text-gray-200 text-sm">${escapeHTML(msg.text)}</p>
+            ${isMine ? `
+            <div class="hidden group-hover:flex items-center gap-2 absolute -top-2.5 right-2 bg-[#232428] rounded px-1.5 py-0.5 shadow">
+                <button class="edit-btn text-gray-400 hover:text-white text-xs" title="Düzenle"><i class="fa-solid fa-pen"></i></button>
+                <button class="delete-btn text-gray-400 hover:text-red-500 text-xs" title="Sil"><i class="fa-solid fa-trash"></i></button>
+            </div>` : ''}
         `;
+        if (isMine) {
+            div.querySelector('.edit-btn').onclick = () => startEditMessage(div, msg.text, (newText) => update(msgRef, { text: newText, edited: true }));
+            div.querySelector('.delete-btn').onclick = () => {
+                if (confirm('Bu mesajı silmek istediğine emin misin?')) remove(msgRef);
+            };
+        }
         chatArea.appendChild(div);
         chatArea.scrollTop = chatArea.scrollHeight;
+    });
+
+    onChildChanged(msgsRef, (snapshot) => {
+        const msg = snapshot.val();
+        const div = chatArea.querySelector(`[data-msg-id="${snapshot.key}"]`);
+        if (!div || !msg) return;
+        const textEl = div.querySelector('.msg-text');
+        if (textEl) textEl.innerText = msg.text;
+        const timeEl = div.querySelector('span.text-\\[10px\\]');
+        if (timeEl && msg.edited) timeEl.innerHTML = `${escapeHTML(msg.time)} <span class="italic">(düzenlendi)</span>`;
+    });
+
+    onChildRemoved(msgsRef, (snapshot) => {
+        const div = chatArea.querySelector(`[data-msg-id="${snapshot.key}"]`);
+        if (div) div.remove();
+    });
+}
+
+// ================= BİLDİRİMLER =================
+function requestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission();
+    }
+}
+
+function showBrowserNotification(title, body) {
+    if ('Notification' in window && Notification.permission === 'granted') {
+        try { new Notification(title, { body }); } catch (e) {}
+    }
+}
+
+function bumpUnread() {
+    unreadCount++;
+    document.title = `(${unreadCount}) ${originalTitle}`;
+}
+
+function clearUnread() {
+    unreadCount = 0;
+    unreadDmUids.clear();
+    document.title = originalTitle;
+    if (currentView === 'dm') listenFriends();
+}
+
+document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) clearUnread();
+});
+window.addEventListener('focus', clearUnread);
+
+// Her arkadaşın DM'ini hafifçe dinler; sohbet açık değilken/pencere arka plandayken bildirim gösterir
+function listenGlobalDmNotifications() {
+    friendsCache.forEach(({ uid: friendUid, username: friendUsername }) => {
+        if (dmGlobalListeners[friendUid]) return; // zaten dinleniyor
+        const myUid = auth.currentUser.uid;
+        const dmKey = pairKey(myUid, friendUid);
+        const lastMsgRef = query(ref(db, `dms/${dmKey}/messages`), limitToLast(1));
+        dmGlobalListeners[friendUid] = lastMsgRef;
+
+        let isFirst = true;
+        onChildAdded(lastMsgRef, (snap) => {
+            if (isFirst) { isFirst = false; return; } // sayfa açılışındaki mevcut son mesajı atla
+            const msg = snap.val();
+            if (!msg || msg.senderId === myUid) return;
+
+            const isViewingThisDm = currentView === 'dm' && currentDmUid === friendUid && !document.hidden;
+            if (!isViewingThisDm) {
+                unreadDmUids.add(friendUid);
+                bumpUnread();
+                showBrowserNotification(`${friendUsername} sana yazdı`, msg.text);
+                if (currentView === 'dm') listenFriends();
+            }
+        });
     });
 }
 
@@ -1151,15 +1394,38 @@ document.getElementById('btnCreateChannel').addEventListener('click', async () =
     channelModal.style.display = 'none';
 });
 
-// ================= MODAL: DAVET KODU =================
+// ================= MODAL: DAVET KODU / AYRILMA / SİLME =================
 const inviteModal = document.getElementById('inviteModal');
 document.getElementById('btnServerInfo').addEventListener('click', () => {
     if (!currentServerData) return;
     document.getElementById('inviteCodeDisplay').innerText = currentServerData.inviteCode || '—';
+
+    const isOwner = currentServerData.ownerId === auth.currentUser.uid;
+    document.getElementById('btnLeaveServer').classList.toggle('hidden', isOwner);
+    document.getElementById('btnDeleteServer').classList.toggle('hidden', !isOwner);
+
     inviteModal.classList.remove('hidden');
     inviteModal.style.display = 'flex';
 });
 document.getElementById('closeInviteModal').addEventListener('click', () => {
+    inviteModal.classList.add('hidden');
+    inviteModal.style.display = 'none';
+});
+
+document.getElementById('btnLeaveServer').addEventListener('click', async () => {
+    if (!confirm(`"${currentServerData.name}" sunucusundan ayrılmak istediğine emin misin?`)) return;
+    const uid = auth.currentUser.uid;
+    const serverId = currentServerId;
+    await remove(ref(db, `servers/${serverId}/members/${uid}`));
+    await remove(ref(db, `users/${uid}/servers/${serverId}`));
+    inviteModal.classList.add('hidden');
+    inviteModal.style.display = 'none';
+});
+
+document.getElementById('btnDeleteServer').addEventListener('click', async () => {
+    if (!confirm(`"${currentServerData.name}" sunucusunu TAMAMEN silmek istediğine emin misin? Bu geri alınamaz.`)) return;
+    const serverId = currentServerId;
+    await remove(ref(db, `servers/${serverId}`));
     inviteModal.classList.add('hidden');
     inviteModal.style.display = 'none';
 });
