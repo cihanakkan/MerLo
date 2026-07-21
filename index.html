@@ -93,6 +93,9 @@
                     <div class="h-12 border-b border-[#1f2023] flex items-center justify-between px-4 shrink-0">
                         <h1 id="serverName" class="font-bold text-white truncate">Bir sunucu seç</h1>
                         <div class="flex items-center gap-3 shrink-0">
+                            <button id="btnManageRoles" title="Roller" class="text-gray-400 hover:text-white">
+                                <i class="fa-solid fa-tag"></i>
+                            </button>
                             <button id="btnServerInfo" title="Davet kodunu göster" class="text-gray-400 hover:text-white">
                                 <i class="fa-solid fa-circle-info"></i>
                             </button>
@@ -233,6 +236,23 @@
             <h2 id="channelModalTitle" class="text-xl font-bold text-white text-center mb-4">Kanal Oluştur</h2>
             <input id="newChannelName" type="text" placeholder="kanal-adı" class="w-full bg-[#1e1f22] text-white p-2.5 rounded outline-none border border-transparent focus:border-[#5865f2] mb-4">
             <button id="btnCreateChannel" class="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium py-2.5 rounded">Oluştur</button>
+        </div>
+    </div>
+
+    <!-- MODAL: Roller -->
+    <div id="rolesModal" class="hidden fixed inset-0 bg-black/70 z-[200] items-center justify-center">
+        <div class="bg-[#313338] w-full max-w-sm rounded-md p-6 relative">
+            <button id="closeRolesModal" class="absolute top-3 right-3 text-gray-400 hover:text-white"><i class="fa-solid fa-xmark"></i></button>
+            <h2 class="text-xl font-bold text-white text-center mb-4">Roller</h2>
+
+            <div id="rolesList" class="flex flex-col gap-1.5 mb-4"></div>
+
+            <div id="createRoleSection" class="hidden border-t border-[#3f4147] pt-4">
+                <label class="text-xs font-bold text-[#b5bac1] uppercase tracking-wide block mb-2">Yeni Rol Oluştur</label>
+                <input id="newRoleName" type="text" placeholder="Rol adı (örn: Moderatör)" class="w-full bg-[#1e1f22] text-white p-2.5 rounded outline-none border border-transparent focus:border-[#5865f2] mb-3">
+                <div id="roleColorSwatches" class="flex items-center gap-2 mb-3"></div>
+                <button id="btnCreateRole" class="w-full bg-[#5865f2] hover:bg-[#4752c4] text-white font-medium py-2 rounded text-sm">Oluştur</button>
+            </div>
         </div>
     </div>
 
